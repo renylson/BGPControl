@@ -534,9 +534,12 @@ setup_backend() {
     "
     
     log_info "Criando arquivo de configuração..."
+    # URL-encode da senha para evitar problemas com caracteres especiais
+    DB_PASSWORD_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$DB_PASSWORD', safe=''))")
+    
     cat > .env << EOF
 # Configuração do Banco de Dados
-DATABASE_URL=postgresql+asyncpg://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
+DATABASE_URL=postgresql+asyncpg://$DB_USER:$DB_PASSWORD_ENCODED@localhost/$DB_NAME
 
 # Segurança
 SECRET_KEY=$JWT_SECRET
@@ -637,7 +640,8 @@ EOF
             echo "VITE_API_URL=http://$DOMAIN/api" >> .env
         fi
     else
-        echo "VITE_API_URL=http://localhost:8000" >> .env
+        # Para acesso por IP, usar caminho relativo para funcionar com nginx proxy
+        echo "VITE_API_URL=/api" >> .env
     fi
     
     cat >> .env << EOF
@@ -723,6 +727,10 @@ server {
     }
 
     # API Backend
+    location = /api {
+        return 301 /api/;
+    }
+    
     location /api/ {
         proxy_pass http://127.0.0.1:8000/;
         proxy_set_header Host \$host;
@@ -732,6 +740,22 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
+        
+        # Headers para CORS
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+        add_header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization";
+        
+        # Handle preflight requests
+        if (\$request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+            add_header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization";
+            add_header Access-Control-Max-Age 1728000;
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
     }
 
     # Documentação da API
@@ -757,6 +781,10 @@ server {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
+    
+    # Logs
+    access_log /var/log/nginx/bgpview_access.log;
+    error_log /var/log/nginx/bgpview_error.log;
 }
 EOF
     else
@@ -774,6 +802,10 @@ server {
     }
 
     # API Backend
+    location = /api {
+        return 301 /api/;
+    }
+    
     location /api/ {
         proxy_pass http://127.0.0.1:8000/;
         proxy_set_header Host \$host;
@@ -783,6 +815,22 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
+        
+        # Headers para CORS
+        add_header Access-Control-Allow-Origin *;
+        add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+        add_header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization";
+        
+        # Handle preflight requests
+        if (\$request_method = 'OPTIONS') {
+            add_header Access-Control-Allow-Origin *;
+            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+            add_header Access-Control-Allow-Headers "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization";
+            add_header Access-Control-Max-Age 1728000;
+            add_header Content-Type 'text/plain charset=UTF-8';
+            add_header Content-Length 0;
+            return 204;
+        }
     }
 
     # Documentação da API
@@ -808,6 +856,10 @@ server {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
+    
+    # Logs
+    access_log /var/log/nginx/bgpview_access.log;
+    error_log /var/log/nginx/bgpview_error.log;
 }
 EOF
     fi
