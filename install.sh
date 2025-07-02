@@ -38,6 +38,22 @@ INSTALL_SSL=false
 CONFIG_FILE=""
 NON_INTERACTIVE=false
 
+# Função para executar comandos com o usuário correto
+run_as_user() {
+    local user="$1"
+    shift
+    if [[ $EUID -eq 0 ]]; then
+        if id "$user" &>/dev/null; then
+            sudo -u "$user" "$@"
+        else
+            # Se o usuário não existe ainda, execute como root
+            "$@"
+        fi
+    else
+        "$@"
+    fi
+}
+
 # Função para log colorido
 log_info() {
     echo -e "${CYAN}[INFO]${NC} $1"
@@ -377,13 +393,26 @@ install_postgresql() {
     systemctl enable postgresql
     
     log_info "Configurando banco de dados..."
-    sudo -u postgres psql << EOF
-CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
-CREATE DATABASE $DB_NAME OWNER $DB_USER;
-GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
-ALTER USER $DB_USER CREATEDB;
-\q
-EOF
+    
+    # Criar usuário se não existir
+    if ! run_as_user postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -q 1; then
+        run_as_user postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
+        log_success "Usuário $DB_USER criado"
+    else
+        log_info "Usuário $DB_USER já existe"
+    fi
+    
+    # Criar banco se não existir
+    if ! run_as_user postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
+        run_as_user postgres createdb -O "$DB_USER" "$DB_NAME"
+        log_success "Banco $DB_NAME criado"
+    else
+        log_info "Banco $DB_NAME já existe"
+    fi
+    
+    # Configurar permissões
+    run_as_user postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+    run_as_user postgres psql -c "ALTER USER $DB_USER CREATEDB;"
     
     log_info "Testando conexão com o banco..."
     if PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -c "SELECT version();" > /dev/null 2>&1; then
@@ -438,8 +467,9 @@ install_nodejs() {
     log_info "Instalando Node.js 18.x..."
     apt install -y nodejs
     
-    log_info "Atualizando npm..."
-    npm install -g npm@latest
+    log_info "Corrigindo versão do npm..."
+    # Forçar instalação de uma versão compatível do npm
+    npm install -g npm@9.9.3 --force
     
     # Verificar instalação
     if node --version > /dev/null 2>&1 && npm --version > /dev/null 2>&1; then
@@ -493,10 +523,10 @@ setup_backend() {
     cd $INSTALL_DIR/backend
     
     log_info "Criando ambiente virtual Python..."
-    sudo -u $SERVICE_USER python3.11 -m venv .venv
+    run_as_user $SERVICE_USER python3.11 -m venv .venv
     
     log_info "Instalando dependências do backend..."
-    sudo -u $SERVICE_USER bash -c "
+    run_as_user $SERVICE_USER bash -c "
         source .venv/bin/activate
         pip install --upgrade pip
         pip install -r requirements.txt
@@ -528,13 +558,13 @@ EOF
     
     # Primeiro, tentar usar Alembic para migrações
     log_info "Tentando executar migrações do Alembic..."
-    if sudo -u $SERVICE_USER bash -c "source .venv/bin/activate && cd $INSTALL_DIR/backend && alembic upgrade head" 2>/dev/null; then
+    if run_as_user $SERVICE_USER bash -c "source .venv/bin/activate && cd $INSTALL_DIR/backend && alembic upgrade head" 2>/dev/null; then
         log_success "Migrações do Alembic executadas com sucesso"
     else
         log_warning "Migrações do Alembic falharam, usando script de inicialização manual"
         
         # Usar script personalizado de inicialização
-        sudo -u $SERVICE_USER bash -c "
+        run_as_user $SERVICE_USER bash -c "
             source .venv/bin/activate
             cd $INSTALL_DIR/backend
             python3 init_database.py '$ADMIN_USERNAME' '$ADMIN_PASSWORD' '$ADMIN_NAME' 'admin'
@@ -547,7 +577,7 @@ EOF
             log_info "Tentando método de fallback..."
             
             # Fallback final
-            sudo -u $SERVICE_USER bash -c "
+            run_as_user $SERVICE_USER bash -c "
                 source .venv/bin/activate
                 cd $INSTALL_DIR/backend
                 python3 -c 'from app.core.init_db import init_db; import asyncio; asyncio.run(init_db())'
@@ -593,7 +623,7 @@ setup_frontend() {
     cd $INSTALL_DIR/frontend
     
     log_info "Instalando dependências do frontend..."
-    sudo -u $SERVICE_USER npm install
+    run_as_user $SERVICE_USER npm install
     
     log_info "Criando arquivo de configuração do frontend..."
     cat > .env << EOF
@@ -618,7 +648,7 @@ VITE_APP_VERSION=1.0.0
 EOF
     
     log_info "Fazendo build do frontend..."
-    sudo -u $SERVICE_USER npm run build
+    run_as_user $SERVICE_USER npm run build
     
     log_success "Frontend configurado com sucesso"
 }
@@ -935,17 +965,17 @@ echo "Parando serviços..."
 systemctl stop bgpview-backend
 
 echo "Atualizando código..."
-sudo -u $SERVICE_USER git pull origin main
+run_as_user $SERVICE_USER git pull origin main
 
 echo "Atualizando backend..."
 cd backend
-sudo -u $SERVICE_USER bash -c "source .venv/bin/activate && pip install -r requirements.txt"
-sudo -u $SERVICE_USER bash -c "source .venv/bin/activate && alembic upgrade head"
+run_as_user $SERVICE_USER bash -c "source .venv/bin/activate && pip install -r requirements.txt"
+run_as_user $SERVICE_USER bash -c "source .venv/bin/activate && alembic upgrade head"
 
 echo "Atualizando frontend..."
 cd ../frontend
-sudo -u $SERVICE_USER npm install
-sudo -u $SERVICE_USER npm run build
+run_as_user $SERVICE_USER npm install
+run_as_user $SERVICE_USER npm run build
 
 echo "Reiniciando serviços..."
 systemctl start bgpview-backend
@@ -975,9 +1005,9 @@ systemctl status postgresql --no-pager -l
 
 echo ""
 echo "=== Banco de Dados ==="
-if sudo -u postgres psql -d $DB_NAME -c "SELECT COUNT(*) as usuarios FROM users;" 2>/dev/null; then
+if run_as_user postgres psql -d $DB_NAME -c "SELECT COUNT(*) as usuarios FROM users;" 2>/dev/null; then
     echo "Conexão com banco: OK"
-    sudo -u postgres psql -d $DB_NAME -c "
+    run_as_user postgres psql -d $DB_NAME -c "
         SELECT 'Usuários: ' || COUNT(*) FROM users
         UNION ALL
         SELECT 'Roteadores: ' || COUNT(*) FROM routers
@@ -1014,7 +1044,7 @@ echo ""
 
 # Verificar conexão
 echo "Testando conexão..."
-if sudo -u postgres psql -d $DB_NAME -c "SELECT version();" > /dev/null 2>&1; then
+if run_as_user postgres psql -d $DB_NAME -c "SELECT version();" > /dev/null 2>&1; then
     echo "✅ Conexão OK"
 else
     echo "❌ Erro na conexão"
@@ -1028,7 +1058,7 @@ expected_tables=("users" "routers" "peerings" "peering_groups" "peering_group_as
 missing=0
 
 for table in "\${expected_tables[@]}"; do
-    if sudo -u postgres psql -d $DB_NAME -t -c "SELECT to_regclass('public.\$table');" 2>/dev/null | grep -q "\$table"; then
+    if run_as_user postgres psql -d $DB_NAME -t -c "SELECT to_regclass('public.\$table');" 2>/dev/null | grep -q "\$table"; then
         echo "✅ Tabela '\$table' existe"
     else
         echo "❌ Tabela '\$table' não encontrada"
@@ -1043,7 +1073,7 @@ if [[ \$missing -eq 0 ]]; then
     # Mostrar contadores
     echo ""
     echo "Dados nas tabelas:"
-    sudo -u postgres psql -d $DB_NAME -c "
+    run_as_user postgres psql -d $DB_NAME -c "
         SELECT 'Usuários: ' || COUNT(*) FROM users
         UNION ALL
         SELECT 'Roteadores: ' || COUNT(*) FROM routers  
@@ -1076,13 +1106,13 @@ echo "Iniciando reparo..."
 
 # Tentar Alembic primeiro
 echo "Tentando Alembic..."
-if sudo -u $SERVICE_USER bash -c "source $INSTALL_DIR/backend/.venv/bin/activate && cd $INSTALL_DIR/backend && alembic upgrade head" 2>/dev/null; then
+if run_as_user $SERVICE_USER bash -c "source $INSTALL_DIR/backend/.venv/bin/activate && cd $INSTALL_DIR/backend && alembic upgrade head" 2>/dev/null; then
     echo "✅ Alembic executado com sucesso"
 else
     echo "⚠️  Alembic falhou, tentando script personalizado..."
     
     if [[ -f "$INSTALL_DIR/backend/init_database.py" ]]; then
-        sudo -u $SERVICE_USER bash -c "
+        run_as_user $SERVICE_USER bash -c "
             source $INSTALL_DIR/backend/.venv/bin/activate
             cd $INSTALL_DIR/backend  
             python3 init_database.py
