@@ -10,7 +10,7 @@ export default function DashboardStatus() {
 
   useEffect(() => {
     setLoading(true);
-    api.get('/dashboard/status')
+    api.get('/dashboard/status/')
       .then(res => setStats(res.data))
       .catch(() => setError('Erro ao carregar status do sistema.'))
       .finally(() => setLoading(false));

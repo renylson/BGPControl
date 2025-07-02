@@ -17,7 +17,7 @@ describe('Fluxo de integração ponta-a-ponta', () => {
     // Mock login
     (api.post as jest.Mock).mockImplementation((url) => {
       if (url === '/users/login') return Promise.resolve({ data: { access_token: 'token' } });
-      if (url === '/peerings') return Promise.resolve({});
+      if (url === '/peerings/') return Promise.resolve({});
       if (url.startsWith('/bgp/sessions/1/up')) return Promise.resolve({});
       return Promise.resolve({});
     });
@@ -55,7 +55,7 @@ describe('Fluxo de integração ponta-a-ponta', () => {
     fireEvent.change(screen.getByLabelText(/^ip$/i), { target: { value: '192.0.2.1' } });
     fireEvent.change(screen.getByLabelText(/asn/i), { target: { value: '65001' } });
     fireEvent.click(screen.getByRole('button', { name: /cadastrar/i }));
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/peerings', expect.objectContaining({ name: 'peer1', ip: '192.0.2.1', asn: '65001' })));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/peerings/', expect.objectContaining({ name: 'peer1', ip: '192.0.2.1', asn: '65001' })));
 
     // Operação BGP
     render(

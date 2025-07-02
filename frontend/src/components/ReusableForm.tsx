@@ -67,10 +67,10 @@ export default function ReusableForm({
               ) : field.type === 'select-multiple' && field.options ? (
                 <Autocomplete
                   multiple
-                  options={field.options}
+                  options={field.options || []}
                   getOptionLabel={opt => typeof opt === 'string' ? opt : (opt.label ?? String(opt.value))}
                   isOptionEqualToValue={(opt, val) => opt.value === val.value}
-                  value={field.options.filter(opt => (values[field.name] || []).includes(opt.value))}
+                  value={(field.options || []).filter(opt => (values[field.name] || []).includes(opt.value))}
                   onChange={(_, newValue) => onChange(field.name, newValue ? newValue.map((v: any) => v.value) : [])}
                   renderInput={params => (
                     <TextField
@@ -90,10 +90,10 @@ export default function ReusableForm({
                 />
               ) : field.type === 'select' && field.options ? (
                 <Autocomplete
-                  options={field.options}
+                  options={field.options || []}
                   getOptionLabel={opt => typeof opt === 'string' ? opt : (opt.label ?? String(opt.value))}
                   isOptionEqualToValue={(opt, val) => opt.value === val.value}
-                  value={field.options.find(opt => opt.value === values[field.name]) || null}
+                  value={(field.options || []).find(opt => opt.value === values[field.name]) || null}
                   onChange={(_, newValue) => onChange(field.name, newValue ? newValue.value : '')}
                   renderInput={params => (
                     <TextField

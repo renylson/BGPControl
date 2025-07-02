@@ -4,6 +4,8 @@ from sqlalchemy.future import select
 from app.models.router import Router
 from app.schemas.router import RouterCreate, RouterRead
 from app.core.config import SessionLocal
+from app.core.deps import get_current_user, is_operator_or_admin
+from app.models.user import User
 from typing import List
 import paramiko
 import traceback
@@ -17,7 +19,7 @@ async def get_db():
 
 # --- ENDPOINT DE PREFIXOS ANUNCIADOS ---
 @router.get("/{router_id}/bgp-advertised-prefixes")
-async def get_bgp_advertised_prefixes(router_id: int, peer_ip: str = Query(...), version: int = Query(4), db: AsyncSession = Depends(get_db)):
+async def get_bgp_advertised_prefixes(router_id: int, peer_ip: str = Query(...), version: int = Query(4), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Executa o comando para obter os prefixos anunciados para o peer informado.
     version: 4 (IPv4) ou 6 (IPv6)
@@ -55,7 +57,7 @@ async def get_bgp_advertised_prefixes(router_id: int, peer_ip: str = Query(...),
 
 
 @router.post("/", response_model=RouterRead)
-async def create_router(router: RouterCreate, db: AsyncSession = Depends(get_db)):
+async def create_router(router: RouterCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     db_router = Router(
         name=router.name,
         ip=router.ip,
@@ -73,12 +75,12 @@ async def create_router(router: RouterCreate, db: AsyncSession = Depends(get_db)
     return db_router
 
 @router.get("/", response_model=List[RouterRead])
-async def list_routers(db: AsyncSession = Depends(get_db)):
+async def list_routers(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Router))
     return result.scalars().all()
 
 @router.get("/{router_id}", response_model=RouterRead)
-async def get_router(router_id: int, db: AsyncSession = Depends(get_db)):
+async def get_router(router_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     router = await db.get(Router, router_id)
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
@@ -87,7 +89,7 @@ async def get_router(router_id: int, db: AsyncSession = Depends(get_db)):
 ## Removido update_router pois RouterUpdate não existe
 
 @router.delete("/{router_id}")
-async def delete_router(router_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_router(router_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     router = await db.get(Router, router_id)
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")

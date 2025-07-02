@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import os
 
 from app.core.config import SECRET_KEY, ALGORITHM
-from app.routers.user import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+
+async def get_db():
+    async with SessionLocal() as session:
+        yield session
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     credentials_exception = HTTPException(

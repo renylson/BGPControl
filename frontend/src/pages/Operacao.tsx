@@ -99,7 +99,7 @@ export default function Operacao() {
       setPrefixDialog({open: true, loading: false, result: 'Erro ao consultar prefixos anunciados.', peer: peerIp, version, name: peering?.name});
     }
   };
-  const [actionDialog, setActionDialog] = useState<{open: boolean, action: 'enable' | 'disable', peering: Peering | null, router: Router | null} | null>(null);
+  const [actionDialog, setActionDialog] = useState<{open: boolean, action: 'enable' | 'disable', peering: Peering | null, grupo: any | null, router: Router | null} | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{open: boolean, success: boolean, message: string}|null>(null);
   const [actionOutput, setActionOutput] = useState<string | null>(null);
   const [executingAction, setExecutingAction] = useState(false);
@@ -109,19 +109,13 @@ export default function Operacao() {
 
   // Adiciona token JWT na query string para SSE
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-  // Sempre use o backend para SSE
-  const apiBase = 'http://bgpview.renylson.com.br:8000';
+  // Use o proxy nginx para SSE
+  const apiBase = '/api';
   let streamUrlWithToken = null;
   if (streamUrl && token) {
     let url = streamUrl;
     if (!streamUrl.startsWith('http')) {
       url = apiBase + streamUrl;
-    } else {
-      try {
-        const u = new URL(streamUrl);
-        u.port = '8000';
-        url = u.toString();
-      } catch {}
     }
     streamUrlWithToken = `${url}${url.includes('?') ? '&' : '?'}token=${token}`;
   }
@@ -167,9 +161,9 @@ export default function Operacao() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get('/routers'),
-      api.get('/peerings'),
-      api.get('/peering-groups'),
+      api.get('/routers/'),
+      api.get('/peerings/'),
+      api.get('/peering-groups/'),
     ])
       .then(([routersRes, peeringsRes, groupsRes]) => {
         setRouters(routersRes.data);
@@ -228,7 +222,7 @@ export default function Operacao() {
     const safeRouters = Array.isArray(routers) ? routers : [];
     const peering = safePeerings.find(p => p.ip === peerIp) || null;
     const router = safeRouters.find(r => r.id === selectedRouter) || null;
-    setActionDialog({ open: true, action, peering, router });
+    setActionDialog({ open: true, action, peering, grupo: null, router });
   };
 
   return (
@@ -310,9 +304,8 @@ export default function Operacao() {
                             <Tooltip title="Ativar sessões">
                               <span>
                                 <IconButton color="success" size="small" onClick={() => {
-                                  const peering = safePeerings.find(p => row.peering_ids?.includes(p.id)) || null;
                                   const router = safeRouters.find(r => r.id === selectedRouter) || null;
-                                  setActionDialog({ open: true, action: 'enable', peering, router });
+                                  setActionDialog({ open: true, action: 'enable', peering: null, grupo: row, router });
                                 }} disabled={ips.length === 0}>
                                   <CheckCircleIcon />
                                 </IconButton>
@@ -321,9 +314,8 @@ export default function Operacao() {
                             <Tooltip title="Desativar sessões">
                               <span>
                                 <IconButton color="error" size="small" onClick={() => {
-                                  const peering = safePeerings.find(p => row.peering_ids?.includes(p.id)) || null;
                                   const router = safeRouters.find(r => r.id === selectedRouter) || null;
-                                  setActionDialog({ open: true, action: 'disable', peering, router });
+                                  setActionDialog({ open: true, action: 'disable', peering: null, grupo: row, router });
                                 }} disabled={ips.length === 0}>
                                   <BlockIcon />
                                 </IconButton>
@@ -469,12 +461,23 @@ export default function Operacao() {
             Confirme a execução do comando abaixo no roteador <b>{actionDialog?.router?.name}</b>:
           </Typography>
           <Box component="pre" sx={{ background: '#222', color: '#fff', p: 2, borderRadius: 2, fontSize: 15, mb: 2 }}>
-            {operationType === 'group' && actionDialog?.peering && gruposDoRouter.length > 0 ? (
+            {(actionDialog?.grupo || actionDialog?.peering) ? (
               (() => {
                 const safeGrupos = Array.isArray(gruposDoRouter) ? gruposDoRouter : [];
                 const safePeerings = Array.isArray(peerings) ? peerings : [];
-                const grupo = safeGrupos.find(g => g.peering_ids?.includes(actionDialog.peering!.id));
-                const ips = safePeerings.filter(p => grupo?.peering_ids?.includes(p.id)).map(p => p.ip);
+                
+                let grupo: any = null;
+                let ips: string[] = [];
+                
+                if (actionDialog.grupo) {
+                  // Operação de grupo - usar o grupo diretamente
+                  grupo = actionDialog.grupo;
+                  ips = safePeerings.filter(p => grupo?.peering_ids?.includes(p.id)).map(p => p.ip);
+                } else if (actionDialog.peering) {
+                  // Operação de peering individual - encontrar o grupo
+                  grupo = safeGrupos.find(g => g.peering_ids?.includes(actionDialog.peering!.id));
+                  ips = safePeerings.filter(p => grupo?.peering_ids?.includes(p.id)).map(p => p.ip);
+                }
                 const asn = actionDialog.router?.asn;
                 const cmd = [
                   'system-view',
@@ -498,18 +501,19 @@ export default function Operacao() {
             color={actionDialog?.action === 'enable' ? 'success' : 'error'}
             variant="contained"
             onClick={async () => {
-              if (!actionDialog?.peering) return;
+              if (!actionDialog?.grupo && !actionDialog?.peering) return;
               setActionOutput(null);
               setExecutingAction(true);
               try {
-                if (operationType === 'group') {
-                  const grupo = gruposDoRouter.find(g => g.peering_ids?.includes(actionDialog.peering!.id));
-                  if (!grupo) throw new Error('Grupo não encontrado');
+                if (actionDialog.grupo) {
+                  // Operação de grupo
+                  const grupo = actionDialog.grupo;
                   setStreamUrl(`/peering-groups/${grupo.id}/bgp-${actionDialog.action}-stream`);
                   setActionDialog(null);
                   setStatusDialog(null);
                   return;
-                } else {
+                } else if (actionDialog.peering) {
+                  // Operação de peering individual
                   setStreamUrl(`/peerings/${actionDialog.peering.id}/bgp-${actionDialog.action}-stream`);
                   setActionDialog(null);
                   setStatusDialog(null);

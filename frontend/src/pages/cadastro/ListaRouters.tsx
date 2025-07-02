@@ -96,7 +96,7 @@ export default function ListaRouters() {
 
   useEffect(() => {
     setLoading(true);
-    api.get('/routers')
+    api.get('/routers/')
       .then(res => setRows(Array.isArray(res.data) ? res.data : []))
       .catch(() => setError('Erro ao carregar roteadores.'))
       .finally(() => setLoading(false));
@@ -149,7 +149,7 @@ export default function ListaRouters() {
           <CadastroRouters
             onSuccess={() => {
               setOpenCadastro(false);
-              api.get('/routers').then(res => setRows(Array.isArray(res.data) ? res.data : []));
+              api.get('/routers/').then(res => setRows(Array.isArray(res.data) ? res.data : []));
             }}
             onCancel={() => setOpenCadastro(false)}
           />
@@ -163,7 +163,7 @@ export default function ListaRouters() {
               if (updated && updated.id) {
                 setRows((prev) => prev.map(r => r.id === updated.id ? { ...r, ...updated } : r));
               } else {
-                api.get('/routers').then(res => setRows(Array.isArray(res.data) ? res.data : []));
+                api.get('/routers/').then(res => setRows(Array.isArray(res.data) ? res.data : []));
               }
             }}
             onCancel={() => setOpenEditar({ open: false, row: null })}

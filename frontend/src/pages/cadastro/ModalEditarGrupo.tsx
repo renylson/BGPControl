@@ -36,7 +36,7 @@ export default function ModalEditarGrupo({ open, id, onSuccess }: { open: boolea
     getRouters().then(rs => setRouters(rs));
     api.get('/peerings/').then(peeringsRes => {
       setAllPeerings(peeringsRes.data);
-      api.get(`/peering-groups/${id}`)
+      api.get(`/peering-groups/${id}/`)
         .then(res => {
           const group = res.data;
           // Descobrir o tipo dos peerings do grupo
@@ -80,7 +80,7 @@ export default function ModalEditarGrupo({ open, id, onSuccess }: { open: boolea
     setSuccess('');
     setErrors({});
     try {
-      await api.put(`/peering-groups/${id}`, values);
+      await api.put(`/peering-groups/${id}/`, values);
       setSuccess('Grupo atualizado com sucesso!');
       onSuccess();
     } catch (err: any) {

@@ -24,7 +24,7 @@ describe('Edição de Peering', () => {
     fireEvent.change(screen.getByLabelText(/descri/i), { target: { value: 'desc editada' } });
     fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
     await waitFor(() => {
-      expect(api.put).toHaveBeenCalledWith('/peerings/1', expect.objectContaining({ description: 'desc editada' }));
+      expect(api.put).toHaveBeenCalledWith('/peerings/1/', expect.objectContaining({ description: 'desc editada' }));
       expect(screen.getByText(/peering atualizado com sucesso/i)).toBeInTheDocument();
     });
   });

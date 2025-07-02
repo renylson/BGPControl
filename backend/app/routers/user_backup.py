@@ -5,11 +5,15 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.core.config import SessionLocal
 from app.core.security import get_password_hash, verify_password, create_access_token
-from app.core.deps import get_current_user, is_admin, get_db
+from app.core.deps import get_current_user, is_admin
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
+
+async def get_db():
+    async with SessionLocal() as session:
+        yield session
 
 @router.post("/register", response_model=UserRead)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -28,7 +32,6 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
         await db.rollback()
         raise HTTPException(status_code=400, detail="Usuário já existe")
     return db_user
-
 @router.get("/", response_model=list[UserRead])
 async def list_users(db: AsyncSession = Depends(get_db), current_user: User = Depends(is_admin)):
     result = await db.execute(select(User))
@@ -50,9 +53,14 @@ async def update_user(user_id: int, user_update: UserUpdate, db: AsyncSession = 
         user.name = user_update.name
     if user_update.profile is not None:
         user.profile = user_update.profile
+    if user_update.is_active is not None:
+        user.is_active = user_update.is_active
     await db.commit()
     await db.refresh(user)
     return user
+
+from app.core.deps import get_current_user, is_admin
+from fastapi import status
 
 @router.delete("/{user_id}")
 async def delete_user(
@@ -102,8 +110,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalars().first()
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inativo")
-    access_token = create_access_token(data={"sub": user.username})
+        raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
+    access_token = create_access_token({"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}

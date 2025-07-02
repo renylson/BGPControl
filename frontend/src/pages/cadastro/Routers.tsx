@@ -40,7 +40,7 @@ export default function CadastroRouters({ onSuccess, onCancel }: { onSuccess?: (
     setSuccess('');
     setErrors({});
     try {
-      const res = await api.post('/routers', values);
+      const res = await api.post('/routers/', values);
       setSuccess('Roteador cadastrado com sucesso!');
       setSavedRouter(res.data); // Salva o roteador cadastrado
       if (onSuccess) onSuccess();

@@ -2,18 +2,11 @@ import axios from 'axios';
 
 
 function getBaseURL() {
-  if (typeof process !== 'undefined' && process.env.VITE_API_URL) {
-    return process.env.VITE_API_URL;
+  // Em produção, sempre use /api
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env.VITE_API_URL || '/api';
   }
-  try {
-    // Usando Function para evitar análise estática do TypeScript
-    // eslint-disable-next-line no-new-func
-    const viteEnv = new Function('try { return typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : undefined; } catch (e) { return undefined; }');
-    const val = viteEnv();
-    return val || '/api';
-  } catch (e) {
-    return '/api';
-  }
+  return '/api';
 }
 
 const baseURL = getBaseURL();
@@ -39,5 +32,19 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Interceptor para lidar com erros de autenticação
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Remove o token inválido e redireciona para login
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

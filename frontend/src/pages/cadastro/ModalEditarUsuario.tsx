@@ -30,7 +30,7 @@ export default function ModalEditarUsuario({ open, id, onClose, onSuccess }: { o
   useEffect(() => {
     if (!open || !id) return;
     setLoadingData(true);
-    api.get(`/users/${id}`)
+    api.get(`/users/${id}/`)
       .then(res => setValues(res.data))
       .catch(() => setErrors({ geral: 'Erro ao carregar dados do usuário.' }))
       .finally(() => setLoadingData(false));
@@ -46,7 +46,7 @@ export default function ModalEditarUsuario({ open, id, onClose, onSuccess }: { o
     setLoading(true);
     setErrors({});
     try {
-      await api.put(`/users/${id}`, values);
+      await api.put(`/users/${id}/`, values);
       onSuccess();
     } catch (err: any) {
       if (err.response?.data?.detail) {

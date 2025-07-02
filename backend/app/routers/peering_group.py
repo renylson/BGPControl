@@ -5,6 +5,8 @@ from app.models.peering_group import PeeringGroup, peering_group_association
 from app.models.peering import Peering
 from app.schemas.peering_group import PeeringGroupCreate, PeeringGroupRead, PeeringGroupUpdate
 from app.core.config import SessionLocal
+from app.core.deps import get_current_user, is_operator_or_admin
+from app.models.user import User
 from typing import List
 from app.models.router import Router
 import paramiko
@@ -17,7 +19,7 @@ async def get_db():
         yield session
 
 @router.post("/", response_model=PeeringGroupRead)
-async def create_group(group: PeeringGroupCreate, db: AsyncSession = Depends(get_db)):
+async def create_group(group: PeeringGroupCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     # Filtra peerings do roteador selecionado
     peerings = (await db.execute(select(Peering).where(Peering.id.in_(group.peering_ids), Peering.router_id == group.router_id))).scalars().all()
     if len(peerings) != len(group.peering_ids):

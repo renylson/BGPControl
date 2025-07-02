@@ -18,7 +18,7 @@ export default function ModalEditarPeering({ id, open, onClose, onSuccess }: { i
   useEffect(() => {
     if (!id) return;
     setLoadingData(true);
-    api.get(`/peerings/${id}`)
+    api.get(`/peerings/${id}/`)
       .then(res => setValues(res.data))
       .catch(() => setErrors({ geral: 'Erro ao carregar dados do peering.' }))
       .finally(() => setLoadingData(false));
@@ -49,7 +49,7 @@ export default function ModalEditarPeering({ id, open, onClose, onSuccess }: { i
     setSuccess('');
     setErrors({});
     try {
-      await api.put(`/peerings/${id}`, values);
+      await api.put(`/peerings/${id}/`, values);
       setSuccess('Peering atualizado com sucesso!');
       if (onSuccess) onSuccess();
       setTimeout(() => onClose(), 1000);

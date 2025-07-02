@@ -42,7 +42,7 @@ export default function CadastroPeerings({ onSuccess }: { onSuccess?: () => void
     setSuccess('');
     setErrors({});
     try {
-      await api.post('/peerings', values);
+      await api.post('/peerings/', values);
       setSuccess('Peering cadastrado com sucesso!');
       setValues({ type: 'IPv4' });
       if (onSuccess) onSuccess();

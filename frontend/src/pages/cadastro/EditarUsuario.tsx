@@ -25,7 +25,7 @@ export default function EditarUsuario() {
   useEffect(() => {
     if (!id) return;
     setLoadingData(true);
-    api.get(`/users/${id}`)
+    api.get(`/users/${id}/`)
       .then(res => setValues(res.data))
       .catch(() => setErrors({ geral: 'Erro ao carregar dados do usuário.' }))
       .finally(() => setLoadingData(false));
@@ -42,7 +42,7 @@ export default function EditarUsuario() {
     setSuccess('');
     setErrors({});
     try {
-      await api.put(`/users/${id}`, values);
+      await api.put(`/users/${id}/`, values);
       setSuccess('Usuário atualizado com sucesso!');
       setTimeout(() => navigate('/cadastro/users'), 1200);
     } catch (err: any) {

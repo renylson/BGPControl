@@ -25,7 +25,7 @@ export default function ChangePasswordModal({ open, onClose }: ChangePasswordMod
       return;
     }
     try {
-      await axios.post('/users/change-password', {
+      await axios.post('/users/change-password/', {
         old_password: oldPassword,
         new_password: newPassword,
       });

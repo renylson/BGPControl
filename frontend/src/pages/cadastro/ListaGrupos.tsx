@@ -108,7 +108,7 @@ export default function ListaGrupos() {
       setLoading(true);
       setError('');
       try {
-        await api.delete(`/peering-groups/${row.id}`);
+        await api.delete(`/peering-groups/${row.id}/`);
         fetchData();
       } catch {
         setError('Erro ao remover.');

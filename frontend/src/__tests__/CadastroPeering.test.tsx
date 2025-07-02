@@ -37,7 +37,7 @@ describe('Cadastro de Peering', () => {
     fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith(
-        '/peerings',
+        '/peerings/',
         expect.objectContaining({
           name: 'peer1',
           ip: '192.0.2.1',

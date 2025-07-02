@@ -6,6 +6,8 @@ from app.models.peering_group import PeeringGroup
 from app.models.router import Router
 from app.schemas.peering import PeeringCreate, PeeringRead, PeeringUpdate
 from app.core.config import SessionLocal
+from app.core.deps import get_current_user, is_operator_or_admin
+from app.models.user import User
 from typing import List
 import paramiko
 import traceback
@@ -17,7 +19,7 @@ async def get_db():
         yield session
 
 @router.post("/", response_model=PeeringRead)
-async def create_peering(peering: PeeringCreate, db: AsyncSession = Depends(get_db)):
+async def create_peering(peering: PeeringCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     db_peering = Peering(**peering.dict(), is_active=True)
     db.add(db_peering)
     await db.commit()
@@ -25,7 +27,7 @@ async def create_peering(peering: PeeringCreate, db: AsyncSession = Depends(get_
     return db_peering
 
 @router.get("/", response_model=List[PeeringRead])
-async def list_peerings(db: AsyncSession = Depends(get_db)):
+async def list_peerings(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Peering))
     return result.scalars().all()
 
@@ -158,7 +160,7 @@ async def bgp_disable(peering_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro ao executar comandos BGP: {e}\n{tb}")
 
 @router.get("/dashboard/summary")
-async def dashboard_summary(db=Depends(get_db)):
+async def dashboard_summary(db=Depends(get_db), current_user: User = Depends(get_current_user)):
     # Conta peerings IPv4 e IPv6
     result = await db.execute(select(Peering))
     peerings = result.scalars().all()

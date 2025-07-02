@@ -37,7 +37,7 @@ export default function ListaUsuarios() {
 
   useEffect(() => {
     setLoading(true);
-    api.get('/users')
+    api.get('/users/')
       .then(res => setRows(res.data))
       .catch(() => setError('Erro ao carregar usuários.'))
       .finally(() => setLoading(false));
@@ -65,7 +65,7 @@ export default function ListaUsuarios() {
         setDeletingId(null);
         return;
       }
-      const response = await api.delete(`/users/${userId}`);
+      const response = await api.delete(`/users/${userId}/`);
       if (response.status === 200 || response.status === 204) {
         setRows(rows => rows.filter(u => u.id !== userId));
       } else {
@@ -138,11 +138,11 @@ export default function ListaUsuarios() {
       {loading && <LoadingCenter />}
       <Dialog open={openCadastro} onClose={() => setOpenCadastro(false)} maxWidth="sm" fullWidth>
         <Box sx={{ p: 2 }}>
-          <ModalCadastroUsuario open={openCadastro} onClose={() => setOpenCadastro(false)} onSuccess={() => { setOpenCadastro(false); setLoading(true); api.get('/users').then(res => setRows(res.data)).finally(() => setLoading(false)); }} />
+          <ModalCadastroUsuario open={openCadastro} onClose={() => setOpenCadastro(false)} onSuccess={() => { setOpenCadastro(false); setLoading(true); api.get('/users/').then(res => setRows(res.data)).finally(() => setLoading(false)); }} />
         </Box>
       </Dialog>
       {editId !== null && (
-        <ModalEditarUsuario open={!!editId} id={editId} onClose={() => setEditId(null)} onSuccess={() => { setEditId(null); setLoading(true); api.get('/users').then(res => setRows(res.data)).finally(() => setLoading(false)); }} />
+        <ModalEditarUsuario open={!!editId} id={editId} onClose={() => setEditId(null)} onSuccess={() => { setEditId(null); setLoading(true); api.get('/users/').then(res => setRows(res.data)).finally(() => setLoading(false)); }} />
       )}
     </Box>
   );
