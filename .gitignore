@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.venv/
+backend/.env
+backend/instance/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/coverage/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
+
+# Others
+.env
+*.sqlite3
+*.db
+
+# Build
+frontend/dist/

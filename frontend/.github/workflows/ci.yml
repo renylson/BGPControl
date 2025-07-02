@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./opt/frontend
+      - name: Build
+        run: npm run build --if-present
+        working-directory: ./opt/frontend
+      - name: Run tests with coverage
+        run: npx jest --coverage --passWithNoTests
+        working-directory: ./opt/frontend
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: ./opt/frontend/coverage
