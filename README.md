@@ -580,6 +580,12 @@ bgpview-backup
 
 # Atualizar sistema para nova versão
 bgpview-update
+
+# Verificar estrutura do banco de dados
+bgpview-check-db
+
+# Reparar banco de dados (se necessário)
+bgpview-repair-db
 ```
 
 ### Backend

@@ -495,11 +495,12 @@ setup_backend() {
     log_info "Criando ambiente virtual Python..."
     sudo -u $SERVICE_USER python3.11 -m venv .venv
     
-    log_info "Ativando ambiente virtual e instalando dependências..."
+    log_info "Instalando dependências do backend..."
     sudo -u $SERVICE_USER bash -c "
         source .venv/bin/activate
         pip install --upgrade pip
         pip install -r requirements.txt
+        pip install alembic  # Garantir que Alembic está instalado
     "
     
     log_info "Criando arquivo de configuração..."
@@ -523,11 +524,64 @@ EOF
         echo "CORS_ORIGINS=http://localhost:3000" >> .env
     fi
     
-    log_info "Executando migrações do banco..."
-    sudo -u $SERVICE_USER bash -c "
-        source .venv/bin/activate
-        alembic upgrade head 2>/dev/null || python3 -c 'from app.core.init_db import init_db; import asyncio; asyncio.run(init_db())'
-    "
+    log_info "Inicializando banco de dados..."
+    
+    # Primeiro, tentar usar Alembic para migrações
+    log_info "Tentando executar migrações do Alembic..."
+    if sudo -u $SERVICE_USER bash -c "source .venv/bin/activate && cd $INSTALL_DIR/backend && alembic upgrade head" 2>/dev/null; then
+        log_success "Migrações do Alembic executadas com sucesso"
+    else
+        log_warning "Migrações do Alembic falharam, usando script de inicialização manual"
+        
+        # Usar script personalizado de inicialização
+        sudo -u $SERVICE_USER bash -c "
+            source .venv/bin/activate
+            cd $INSTALL_DIR/backend
+            python3 init_database.py '$ADMIN_USERNAME' '$ADMIN_PASSWORD' '$ADMIN_NAME' 'admin'
+        "
+        
+        if [[ $? -eq 0 ]]; then
+            log_success "Banco de dados inicializado com script personalizado"
+        else
+            log_error "Falha na inicialização do banco de dados"
+            log_info "Tentando método de fallback..."
+            
+            # Fallback final
+            sudo -u $SERVICE_USER bash -c "
+                source .venv/bin/activate
+                cd $INSTALL_DIR/backend
+                python3 -c 'from app.core.init_db import init_db; import asyncio; asyncio.run(init_db())'
+            "
+            
+            if [[ $? -eq 0 ]]; then
+                log_success "Tabelas criadas com método de fallback"
+            else
+                log_error "Todos os métodos de inicialização do banco falharam"
+                return 1
+            fi
+        fi
+    fi
+    
+    # Verificar se as tabelas foram criadas
+    log_info "Verificando estrutura do banco de dados..."
+    if PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -c "
+        SELECT COUNT(*) FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
+    " | grep -q "[1-9]"; then
+        log_success "Tabelas do banco criadas com sucesso"
+        
+        # Listar tabelas criadas
+        log_info "Tabelas encontradas:"
+        PGPASSWORD=$DB_PASSWORD psql -h localhost -U $DB_USER -d $DB_NAME -t -c "
+            SELECT '  • ' || tablename as tabela
+            FROM pg_tables 
+            WHERE schemaname = 'public' 
+            ORDER BY tablename;
+        " 2>/dev/null || log_warning "Não foi possível listar as tabelas"
+    else
+        log_error "Nenhuma tabela foi criada no banco de dados"
+        return 1
+    fi
     
     log_success "Backend configurado com sucesso"
 }
@@ -764,7 +818,7 @@ setup_ssl() {
 
 # Criar usuário administrador
 create_admin_user() {
-    log_header "CRIANDO USUÁRIO ADMINISTRADOR"
+    log_header "VERIFICANDO USUÁRIO ADMINISTRADOR"
     
     log_info "Aguardando backend inicializar..."
     sleep 10
@@ -786,28 +840,33 @@ create_admin_user() {
     done
     
     if [[ $attempt -gt $max_attempts ]]; then
-        log_error "Backend não respondeu após $max_attempts tentativas"
-        log_error "Verifique os logs: journalctl -u bgpview-backend -f"
-        exit 1
+        log_warning "Backend não respondeu, mas usuário pode ter sido criado durante inicialização do banco"
+        log_info "Verifique manualmente após a instalação"
+        return 0
     fi
     
-    log_info "Criando usuário administrador..."
+    # Verificar se usuário já existe
+    log_info "Verificando se usuário administrador já existe..."
     
-    # Criar usuário via API
-    local response=$(curl -s -X POST "http://localhost:8000/users/register" \
+    local check_response=$(curl -s -X POST "http://localhost:8000/users/register" \
         -H "Content-Type: application/json" \
         -d "{
             \"username\": \"$ADMIN_USERNAME\",
             \"password\": \"$ADMIN_PASSWORD\",
             \"name\": \"$ADMIN_NAME\",
             \"profile\": \"admin\"
-        }")
+        }" 2>/dev/null)
     
     if [[ $? -eq 0 ]]; then
-        log_success "Usuário administrador criado com sucesso"
+        if echo "$check_response" | grep -q "já existe\|already exists"; then
+            log_success "Usuário administrador já existe no sistema"
+        else
+            log_success "Usuário administrador criado via API"
+        fi
     else
-        log_warning "Erro ao criar usuário administrador via API"
-        log_info "Você pode criar manualmente após a instalação"
+        log_warning "Não foi possível criar/verificar usuário via API"
+        log_info "O usuário pode ter sido criado durante a inicialização do banco"
+        log_info "Credenciais configuradas: $ADMIN_USERNAME / $ADMIN_PASSWORD"
     fi
 }
 
@@ -915,6 +974,23 @@ echo "PostgreSQL:"
 systemctl status postgresql --no-pager -l
 
 echo ""
+echo "=== Banco de Dados ==="
+if sudo -u postgres psql -d $DB_NAME -c "SELECT COUNT(*) as usuarios FROM users;" 2>/dev/null; then
+    echo "Conexão com banco: OK"
+    sudo -u postgres psql -d $DB_NAME -c "
+        SELECT 'Usuários: ' || COUNT(*) FROM users
+        UNION ALL
+        SELECT 'Roteadores: ' || COUNT(*) FROM routers
+        UNION ALL  
+        SELECT 'Peerings: ' || COUNT(*) FROM peerings
+        UNION ALL
+        SELECT 'Grupos: ' || COUNT(*) FROM peering_groups;
+    " 2>/dev/null || echo "Erro ao consultar dados"
+else
+    echo "Erro na conexão com banco de dados"
+fi
+
+echo ""
 echo "=== Uso de Recursos ==="
 echo "Memória:"
 free -h
@@ -928,6 +1004,107 @@ echo "=== Conexões Ativas ==="
 ss -tulpn | grep -E ':(80|443|8000|5432)'
 EOF
 
+    # Script de verificação do banco
+    cat > /usr/local/bin/bgpview/check-db.sh << EOF
+#!/bin/bash
+# Script de verificação do banco de dados
+
+echo "=== Verificação do Banco de Dados BGPView ==="
+echo ""
+
+# Verificar conexão
+echo "Testando conexão..."
+if sudo -u postgres psql -d $DB_NAME -c "SELECT version();" > /dev/null 2>&1; then
+    echo "✅ Conexão OK"
+else
+    echo "❌ Erro na conexão"
+    exit 1
+fi
+
+# Verificar tabelas
+echo ""
+echo "Verificando tabelas..."
+expected_tables=("users" "routers" "peerings" "peering_groups" "peering_group_association")
+missing=0
+
+for table in "\${expected_tables[@]}"; do
+    if sudo -u postgres psql -d $DB_NAME -t -c "SELECT to_regclass('public.\$table');" 2>/dev/null | grep -q "\$table"; then
+        echo "✅ Tabela '\$table' existe"
+    else
+        echo "❌ Tabela '\$table' não encontrada"
+        ((missing++))
+    fi
+done
+
+if [[ \$missing -eq 0 ]]; then
+    echo ""
+    echo "✅ Todas as tabelas necessárias estão presentes"
+    
+    # Mostrar contadores
+    echo ""
+    echo "Dados nas tabelas:"
+    sudo -u postgres psql -d $DB_NAME -c "
+        SELECT 'Usuários: ' || COUNT(*) FROM users
+        UNION ALL
+        SELECT 'Roteadores: ' || COUNT(*) FROM routers  
+        UNION ALL
+        SELECT 'Peerings: ' || COUNT(*) FROM peerings
+        UNION ALL
+        SELECT 'Grupos: ' || COUNT(*) FROM peering_groups;
+    " 2>/dev/null
+else
+    echo ""
+    echo "❌ \$missing tabela(s) faltando - execute: bgpview-repair-db"
+fi
+EOF
+
+    # Script de reparo do banco
+    cat > /usr/local/bin/bgpview/repair-db.sh << EOF
+#!/bin/bash
+# Script de reparo do banco de dados
+
+echo "=== Reparo do Banco de Dados BGPView ==="
+echo ""
+
+read -p "Deseja tentar reparar o banco de dados? (s/N): " confirm
+if [[ ! \$confirm =~ ^[SsYy]\$ ]]; then
+    echo "Reparo cancelado"
+    exit 0
+fi
+
+echo "Iniciando reparo..."
+
+# Tentar Alembic primeiro
+echo "Tentando Alembic..."
+if sudo -u $SERVICE_USER bash -c "source $INSTALL_DIR/backend/.venv/bin/activate && cd $INSTALL_DIR/backend && alembic upgrade head" 2>/dev/null; then
+    echo "✅ Alembic executado com sucesso"
+else
+    echo "⚠️  Alembic falhou, tentando script personalizado..."
+    
+    if [[ -f "$INSTALL_DIR/backend/init_database.py" ]]; then
+        sudo -u $SERVICE_USER bash -c "
+            source $INSTALL_DIR/backend/.venv/bin/activate
+            cd $INSTALL_DIR/backend  
+            python3 init_database.py
+        "
+        
+        if [[ \$? -eq 0 ]]; then
+            echo "✅ Script personalizado executado"
+        else
+            echo "❌ Falha no reparo"
+            exit 1
+        fi
+    else
+        echo "❌ Script de reparo não encontrado"
+        exit 1
+    fi
+fi
+
+echo ""
+echo "Verificando resultado..."
+/usr/local/bin/bgpview/check-db.sh
+EOF
+
     # Tornar scripts executáveis
     chmod +x /usr/local/bin/bgpview/*.sh
     
@@ -935,6 +1112,8 @@ EOF
     ln -sf /usr/local/bin/bgpview/status.sh /usr/local/bin/bgpview-status
     ln -sf /usr/local/bin/bgpview/backup.sh /usr/local/bin/bgpview-backup
     ln -sf /usr/local/bin/bgpview/update.sh /usr/local/bin/bgpview-update
+    ln -sf /usr/local/bin/bgpview/check-db.sh /usr/local/bin/bgpview-check-db
+    ln -sf /usr/local/bin/bgpview/repair-db.sh /usr/local/bin/bgpview-repair-db
     
     log_success "Scripts de manutenção criados"
 }
@@ -980,9 +1159,11 @@ show_completion_info() {
     echo ""
     echo -e "${BOLD}🔧 COMANDOS ÚTEIS:${NC}"
     echo "================================="
-    echo -e "• ${CYAN}bgpview-status${NC}     - Ver status dos serviços"
-    echo -e "• ${CYAN}bgpview-backup${NC}     - Fazer backup do sistema"
-    echo -e "• ${CYAN}bgpview-update${NC}     - Atualizar o sistema"
+    echo -e "• ${CYAN}bgpview-status${NC}       - Ver status dos serviços"
+    echo -e "• ${CYAN}bgpview-backup${NC}       - Fazer backup do sistema"
+    echo -e "• ${CYAN}bgpview-update${NC}       - Atualizar o sistema"
+    echo -e "• ${CYAN}bgpview-check-db${NC}     - Verificar banco de dados"
+    echo -e "• ${CYAN}bgpview-repair-db${NC}    - Reparar banco de dados"
     echo ""
     echo -e "• ${CYAN}systemctl status bgpview-backend${NC} - Status do backend"
     echo -e "• ${CYAN}journalctl -u bgpview-backend -f${NC} - Logs do backend"

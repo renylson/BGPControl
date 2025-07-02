@@ -169,15 +169,51 @@ test_database() {
     if sudo -u postgres psql -d $DB_NAME -c "SELECT 1;" &>/dev/null; then
         log_success "Conexão com banco de dados funcionando"
         
-        # Verificar tabelas
-        local tables=$(sudo -u postgres psql -d $DB_NAME -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ')
-        if [[ "$tables" -gt 0 ]]; then
-            log_success "Tabelas do banco criadas ($tables tabelas)"
+        # Verificar tabelas principais
+        local expected_tables=("users" "routers" "peerings" "peering_groups" "peering_group_association")
+        local missing_tables=()
+        
+        for table in "${expected_tables[@]}"; do
+            if sudo -u postgres psql -d $DB_NAME -t -c "SELECT to_regclass('public.$table');" 2>/dev/null | grep -q "$table"; then
+                log_success "Tabela '$table' existe"
+            else
+                log_error "Tabela '$table' não encontrada"
+                missing_tables+=("$table")
+            fi
+        done
+        
+        if [[ ${#missing_tables[@]} -eq 0 ]]; then
+            log_success "Todas as tabelas necessárias existem"
+            
+            # Verificar dados nas tabelas
+            local user_count=$(sudo -u postgres psql -d $DB_NAME -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d ' ' || echo "0")
+            if [[ $user_count -gt 0 ]]; then
+                log_success "Usuários encontrados no banco ($user_count)"
+            else
+                log_warning "Nenhum usuário encontrado no banco"
+            fi
+            
+        else
+            log_error "Tabelas faltando: ${missing_tables[*]}"
+        fi
+        
+        # Verificar estrutura do banco
+        local total_tables=$(sudo -u postgres psql -d $DB_NAME -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null | tr -d ' ' || echo "0")
+        if [[ $total_tables -gt 0 ]]; then
+            log_success "Total de tabelas no banco: $total_tables"
         else
             log_error "Nenhuma tabela encontrada no banco"
         fi
     else
         log_error "Erro na conexão com banco de dados"
+        
+        # Verificar se PostgreSQL está rodando
+        if systemctl is-active --quiet postgresql; then
+            log_info "PostgreSQL está ativo, mas conexão falhou"
+            log_info "Verifique as credenciais e configurações"
+        else
+            log_error "PostgreSQL não está ativo"
+        fi
     fi
 }
 
