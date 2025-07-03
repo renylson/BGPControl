@@ -9,6 +9,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import RouterIcon from '@mui/icons-material/Router';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import NetworkPingIcon from '@mui/icons-material/NetworkPing';
+import HistoryIcon from '@mui/icons-material/History';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordModal from '../components/ChangePasswordModal';
@@ -29,6 +30,7 @@ const menu = [
       { text: 'Peerings', icon: <SettingsIcon />, path: '/cadastro/peerings' },
       { text: 'Grupo de Peerings', icon: <GroupIcon />, path: '/cadastro/grupos', sx: { whiteSpace: 'nowrap' } },
       { text: 'Usuários', icon: <PersonIcon />, path: '/cadastro/users' },
+      { text: 'Logs de Auditoria', icon: <HistoryIcon />, path: '/auditoria' },
     ]
   }
 ];

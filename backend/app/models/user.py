@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -11,3 +12,6 @@ class User(Base):
     name = Column(String, nullable=False)
     profile = Column(String, nullable=False)  # 'Administrador' ou 'Operador'
     is_active = Column(Boolean, default=True)
+    
+    # Relacionamento com AuditLog
+    audit_logs = relationship("AuditLog", back_populates="user")

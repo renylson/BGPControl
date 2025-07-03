@@ -148,7 +148,26 @@ export default function QueryForm({ onQuerySubmit, loading = false }: QueryFormP
       <Box component="form" onSubmit={handleSubmit}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-            <FormControl fullWidth error={!!validationErrors.type}>
+            <FormControl 
+              fullWidth 
+              error={!!validationErrors.type}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.23)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#1976d2',
+                  },
+                  '&.Mui-disabled fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                  },
+                },
+              }}
+            >
               <InputLabel>Tipo de Consulta</InputLabel>
               <Select
                 value={formData.type}
@@ -164,7 +183,26 @@ export default function QueryForm({ onQuerySubmit, loading = false }: QueryFormP
               </Select>
             </FormControl>
 
-            <FormControl fullWidth error={!!validationErrors.routerId}>
+            <FormControl 
+              fullWidth 
+              error={!!validationErrors.routerId}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.23)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.4)',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#1976d2',
+                  },
+                  '&.Mui-disabled fieldset': {
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                  },
+                },
+              }}
+            >
               <InputLabel>Roteador</InputLabel>
               <Select
                 value={formData.routerId || ''}
@@ -203,12 +241,46 @@ export default function QueryForm({ onQuerySubmit, loading = false }: QueryFormP
             error={!!validationErrors.target}
             helperText={validationErrors.target}
             disabled={loading}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.23)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.4)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#1976d2',
+                },
+                '&.Mui-disabled fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.15)',
+                },
+              },
+            }}
           />
 
           {/* Opções específicas por tipo de query */}
           <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
             {(formData.type === 'ping' || formData.type === 'traceroute' || formData.type === 'bgp' || formData.type === 'bgp-summary') && (
-              <FormControl fullWidth>
+              <FormControl 
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.23)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.4)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#1976d2',
+                    },
+                    '&.Mui-disabled fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.15)',
+                    },
+                  },
+                }}
+              >
                 <InputLabel>Versão IP</InputLabel>
                 <Select
                   value={formData.options?.ipVersion || 4}
@@ -226,7 +298,25 @@ export default function QueryForm({ onQuerySubmit, loading = false }: QueryFormP
             )}
 
             {(formData.type === 'ping' || formData.type === 'traceroute') && filteredSourceIps.length > 0 && (
-              <FormControl fullWidth>
+              <FormControl 
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.23)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.4)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#1976d2',
+                    },
+                    '&.Mui-disabled fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.15)',
+                    },
+                  },
+                }}
+              >
                 <InputLabel>IP de Origem</InputLabel>
                 <Select
                   value={formData.options?.sourceIp || ''}
@@ -268,6 +358,22 @@ export default function QueryForm({ onQuerySubmit, loading = false }: QueryFormP
                 })}
                 inputProps={{ min: 1, max: 64 }}
                 disabled={loading}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.23)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.4)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#1976d2',
+                    },
+                    '&.Mui-disabled fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.15)',
+                    },
+                  },
+                }}
               />
             )}
           </Box>

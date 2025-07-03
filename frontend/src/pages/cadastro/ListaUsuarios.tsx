@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DataTable from '../../components/DataTable';
-import { Box, Typography, Button, IconButton } from '@mui/material';
+import { Box, Button, IconButton, Alert } from '@mui/material';
 import { Dialog } from '@mui/material';
 import api from '../../api/axios';
 // import { Link } from 'react-router-dom';
@@ -9,7 +9,12 @@ import ModalCadastroUsuario from './ModalCadastroUsuario';
 import ModalEditarUsuario from './ModalEditarUsuario';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PersonIcon from '@mui/icons-material/Person';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import LoadingCenter from '../../components/LoadingCenter';
+import PageLayout from '../../components/PageLayout';
+import StyledCard from '../../components/StyledCard';
 
 // Definido sem renderCell, para ser usado em columnsWithActions
 const columns = [
@@ -120,21 +125,51 @@ export default function ListaUsuarios() {
   );
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', mt: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h4" color="primary" fontWeight={800}>Usuários</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, fontSize: 18, boxShadow: '0 2px 8px 0 rgba(31,38,135,0.10)' }}
-          onClick={() => setOpenCadastro(true)}
-        >
-          Novo Usuário
-        </Button>
-      </Box>
-      {error && <Typography color="error" sx={{ mb: 2, fontWeight: 600 }}>{error}</Typography>}
-      <Box sx={{ height: 4 }} />
-      <DataTable columns={columnsWithActions} rows={rows} />
+    <PageLayout
+      title="Usuários"
+      subtitle="Gerencie os usuários do sistema"
+      icon={<PersonIcon sx={{ fontSize: '2rem' }} />}
+      actions={
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton 
+            onClick={() => {
+              setLoading(true);
+              setError('');
+              api.get('/users/')
+                .then(res => setRows(res.data))
+                .catch(() => setError('Erro ao carregar usuários.'))
+                .finally(() => setLoading(false));
+            }} 
+            disabled={loading}
+            sx={{ 
+              color: '#1976d2',
+              '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.08)' }
+            }}
+          >
+            <RefreshIcon />
+          </IconButton>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddCircleIcon />}
+            sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1 }}
+            onClick={() => setOpenCadastro(true)}
+          >
+            Novo Usuário
+          </Button>
+        </Box>
+      }
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      <StyledCard sx={{ p: 0 }}>
+        <DataTable columns={columnsWithActions} rows={rows} />
+      </StyledCard>
+
       {loading && <LoadingCenter />}
       <Dialog open={openCadastro} onClose={() => setOpenCadastro(false)} maxWidth="sm" fullWidth>
         <Box sx={{ p: 2 }}>
@@ -144,6 +179,6 @@ export default function ListaUsuarios() {
       {editId !== null && (
         <ModalEditarUsuario open={!!editId} id={editId} onClose={() => setEditId(null)} onSuccess={() => { setEditId(null); setLoading(true); api.get('/users/').then(res => setRows(res.data)).finally(() => setLoading(false)); }} />
       )}
-    </Box>
+    </PageLayout>
   );
 }

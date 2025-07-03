@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Box, Container, Typography, Alert, Snackbar } from '@mui/material';
+import { Box, Typography, Alert, Snackbar } from '@mui/material';
 import { NetworkPing } from '@mui/icons-material';
 import QueryForm from '../components/LookingGlass/QueryForm';
 import QueryResults from '../components/LookingGlass/QueryResults';
 import { lookingGlassAPI } from '../api/lookingGlass';
 import type { QueryRequest, LookingGlassQuery } from '../types/lookingGlass';
+import PageLayout from '../components/PageLayout';
 
 export default function LookingGlass() {
   const [currentQuery, setCurrentQuery] = useState<LookingGlassQuery | undefined>();
@@ -97,23 +98,11 @@ export default function LookingGlass() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Header */}
-      <Box mb={4}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom
-          sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
-        >
-          <NetworkPing sx={{ fontSize: '2rem' }} />
-          Network Looking Glass
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Execute consultas de rede (ping, traceroute, BGP lookup e BGP lookup resumido) através dos roteadores configurados.
-        </Typography>
-      </Box>
-
+    <PageLayout
+      title="Network Looking Glass"
+      subtitle="Execute consultas de rede (ping, traceroute, BGP lookup e BGP lookup resumido) através dos roteadores configurados"
+      icon={<NetworkPing sx={{ fontSize: '2rem' }} />}
+    >
       {/* Conteúdo principal */}
       <Box sx={{ mb: 3 }}>
         {/* Formulário de consulta */}
@@ -158,6 +147,6 @@ export default function LookingGlass() {
           {notification.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </PageLayout>
   );
 }

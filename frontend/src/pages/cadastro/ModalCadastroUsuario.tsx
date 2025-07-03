@@ -36,7 +36,7 @@ export default function ModalCadastroUsuario({ open, onClose, onSuccess }: { ope
     setLoading(true);
     setErrors({});
     try {
-      await api.post('/users/register', values);
+      await api.post('/users/register/', values);
       onSuccess();
       setValues({});
     } catch (err: any) {

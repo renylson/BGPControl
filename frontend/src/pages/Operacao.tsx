@@ -33,16 +33,19 @@ function useSSEStream(url: string | null, onFinish?: (output: string) => void) {
   return output;
 }
 
-import { Box, Typography, Paper, Select, MenuItem, FormControl, InputLabel, CircularProgress, Autocomplete, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Select, MenuItem, FormControl, InputLabel, CircularProgress, Autocomplete, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material';
 import DataTable from '../components/DataTable';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import NetworkPingIcon from '@mui/icons-material/NetworkPing';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import { IconButton, Tooltip } from '@mui/material';
 import Backdrop from '@mui/material/Backdrop';
 import api from '../api/axios';
+import PageLayout from '../components/PageLayout';
+import StyledCard from '../components/StyledCard';
 
 
 interface Peering {
@@ -304,7 +307,11 @@ export default function Operacao() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', p: { xs: 1, sm: 4 }, background: 'linear-gradient(135deg, #181c24 0%, #232a36 100%)' }}>
+    <PageLayout
+      title="Operação de Sessões BGP"
+      subtitle="Gerencie e monitore as sessões BGP dos roteadores"
+      icon={<SwapHorizIcon sx={{ fontSize: '2rem' }} />}
+    >
       {/* Backdrop de execução de ação - agora antes dos Dialogs */}
       <Backdrop open={executingAction} sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.modal + 10 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -312,21 +319,55 @@ export default function Operacao() {
           <Typography sx={{ mt: 2 }}>Aguarde, executando ação...</Typography>
         </Box>
       </Backdrop>
-      <Typography variant="h4" color="primary" fontWeight={800} align="center" sx={{ mb: 4, mt: 2, letterSpacing: 1 }}>
-        Operação de Sessões BGP
-      </Typography>
-      <Paper sx={{ p: 3, borderRadius: 4, width: { xs: '100%', sm: 700 }, maxWidth: '100%', mx: 'auto', mb: 4, background: 'rgba(33, 53, 71, 0.18)' }}>
+      <StyledCard sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
           <Autocomplete
             options={routers}
             getOptionLabel={(option: Router) => option.name}
             value={(Array.isArray(routers) ? routers : []).find(r => r.id === selectedRouter) || null}
             onChange={(_event: React.SyntheticEvent, value: Router | null) => setSelectedRouter(value ? value.id : '')}
-            renderInput={(params: any) => <TextField {...params} label="Selecione o Roteador" />}
+            renderInput={(params: any) => (
+              <TextField 
+                {...params} 
+                label="Selecione o Roteador"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.23)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'rgba(255, 255, 255, 0.4)',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#1976d2',
+                    },
+                  },
+                }}
+              />
+            )}
             sx={{ flex: 1 }}
             isOptionEqualToValue={(option: Router, value: Router) => option.id === value.id}
           />
-          <FormControl fullWidth sx={{ flex: 1 }}>
+          <FormControl 
+            fullWidth 
+            sx={{ 
+              flex: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.23)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.4)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#1976d2',
+                },
+                '&.Mui-disabled fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.15)',
+                },
+              },
+            }}
+          >
             <InputLabel id="operation-type-label">Tipo de Operação</InputLabel>
             <Select
               labelId="operation-type-label"
@@ -340,7 +381,7 @@ export default function Operacao() {
             </Select>
           </FormControl>
         </Box>
-      </Paper>
+      </StyledCard>
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>
       ) : error ? (
@@ -688,6 +729,6 @@ export default function Operacao() {
           )}
         </DialogActions>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 }

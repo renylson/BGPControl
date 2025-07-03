@@ -28,7 +28,7 @@ export default function CadastroUsuarios() {
     setSuccess('');
     setErrors({});
     try {
-      await api.post('/users/', values);
+      await api.post('/users/register/', values);
       setSuccess('Usuário cadastrado com sucesso!');
       setValues({});
     } catch (err: any) {

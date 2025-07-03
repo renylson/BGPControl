@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
 import DataTable from '../../components/DataTable';
-import { Box, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Box, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert } from '@mui/material';
 import CadastroPeerings from './Peerings';
 import api from '../../api/axios';
 // import { Link } from 'react-router-dom';
 import ModalEditarPeering from './ModalEditarPeering';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import LoadingCenter from '../../components/LoadingCenter';
+import PageLayout from '../../components/PageLayout';
+import StyledCard from '../../components/StyledCard';
 
 const columns = [
   { id: 'name', label: 'Nome', minWidth: 120 },
@@ -76,12 +81,17 @@ export default function ListaPeerings() {
   const [error, setError] = useState('');
   const [openCadastro, setOpenCadastro] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true);
+    setError('');
     api.get('/peerings')
       .then(res => setRows(res.data))
       .catch(() => setError('Erro ao carregar peerings.'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const columnsWithActions = columns.map(col =>
@@ -91,26 +101,44 @@ export default function ListaPeerings() {
   );
 
   return (
-    <Box sx={{
-      width: '100%',
-      maxWidth: 1200,
-      mx: 'auto',
-      mt: 4,
-    }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h4" color="primary" fontWeight={800}>Peerings</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, fontSize: 18, boxShadow: '0 2px 8px 0 rgba(31,38,135,0.10)' }}
-          onClick={() => setOpenCadastro(true)}
-        >
-          Novo Peering
-        </Button>
-      </Box>
-      {error && <Typography color="error" sx={{ mb: 2, fontWeight: 600 }}>{error}</Typography>}
-      <Box sx={{ height: 4 }} />
-      <DataTable columns={columnsWithActions} rows={rows} />
+    <PageLayout
+      title="Peerings"
+      subtitle="Gerencie as conexões de peering BGP"
+      icon={<SettingsIcon sx={{ fontSize: '2rem' }} />}
+      actions={
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton 
+            onClick={loadData} 
+            disabled={loading}
+            sx={{ 
+              color: '#1976d2',
+              '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.08)' }
+            }}
+          >
+            <RefreshIcon />
+          </IconButton>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddCircleIcon />}
+            sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1 }}
+            onClick={() => setOpenCadastro(true)}
+          >
+            Novo Peering
+          </Button>
+        </Box>
+      }
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      <StyledCard sx={{ p: 0 }}>
+        <DataTable columns={columnsWithActions} rows={rows} />
+      </StyledCard>
+
       {loading && <LoadingCenter />}
       <Dialog open={openCadastro} onClose={() => setOpenCadastro(false)} maxWidth="sm" fullWidth>
         <Box sx={{ p: 2 }}>
@@ -122,6 +150,6 @@ export default function ListaPeerings() {
           />
         </Box>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 }

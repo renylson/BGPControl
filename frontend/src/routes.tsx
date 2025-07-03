@@ -17,6 +17,7 @@ const ListaUsuarios = lazy(() => import('./pages/cadastro/ListaUsuarios'));
 const EditarUsuario = lazy(() => import('./pages/cadastro/EditarUsuario'));
 const Operacao = lazy(() => import('./pages/Operacao'));
 const LookingGlass = lazy(() => import('./pages/LookingGlass'));
+const LogsAuditoria = lazy(() => import('./pages/LogsAuditoria'));
 // const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 
 export const routes = [
@@ -36,6 +37,7 @@ export const routes = [
   { path: '/cadastro/users/:id', element: <EditarUsuario /> },
   { path: '/operacao', element: <Operacao /> },
   { path: '/looking-glass', element: <LookingGlass /> },
+  { path: '/auditoria', element: <LogsAuditoria /> },
   // { path: '/trocar-senha', element: <ChangePassword /> }, // Modal é aberto via header
   { path: '*', element: <Navigate to="/" /> },
 ];

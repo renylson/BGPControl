@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
 import DataTable from '../../components/DataTable';
-import { Box, Typography, Button, IconButton, DialogTitle, DialogContent, DialogContentText, DialogActions, Dialog } from '@mui/material';
+import { Box, Typography, Button, IconButton, DialogTitle, DialogContent, DialogContentText, DialogActions, Dialog, Alert } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import RouterIcon from '@mui/icons-material/Router';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import api from '../../api/axios';
 import CadastroRouters from './Routers';
 import EditarRouter from './EditarRouter';
+import PageLayout from '../../components/PageLayout';
+import StyledCard from '../../components/StyledCard';
 
 const columns = [
   { id: 'name', label: 'Nome', minWidth: 120 },
@@ -84,9 +89,6 @@ function ActionsCell({ row, onEdit }: { row: any, onEdit: (row: any) => void }) 
 }
 
 
-import RouterIcon from '@mui/icons-material/Router';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
-
 export default function ListaRouters() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,12 +96,17 @@ export default function ListaRouters() {
   const [openCadastro, setOpenCadastro] = useState(false);
   const [openEditar, setOpenEditar] = useState<{ open: boolean, row: any | null }>({ open: false, row: null });
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true);
+    setError('');
     api.get('/routers/')
       .then(res => setRows(Array.isArray(res.data) ? res.data : []))
       .catch(() => setError('Erro ao carregar roteadores.'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   // Adapta DataTable para passar onEdit corretamente
@@ -119,31 +126,43 @@ export default function ListaRouters() {
   }, []);
 
   return (
-    <Box sx={{
-      width: '100%',
-      maxWidth: 1200,
-      mx: 'auto',
-      mt: 4,
-    }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <RouterIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-          <Typography variant="h4" color="primary.main" fontWeight={800} sx={{ letterSpacing: 1 }}>Roteadores</Typography>
+    <PageLayout
+      title="Roteadores"
+      subtitle="Gerencie os roteadores do sistema"
+      icon={<RouterIcon sx={{ fontSize: '2rem' }} />}
+      actions={
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton 
+            onClick={loadData} 
+            disabled={loading}
+            sx={{ 
+              color: '#1976d2',
+              '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.08)' }
+            }}
+          >
+            <RefreshIcon />
+          </IconButton>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddCircleIcon />}
+            sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1 }}
+            onClick={() => setOpenCadastro(true)}
+          >
+            Novo Roteador
+          </Button>
         </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddCircleIcon />}
-          sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, fontSize: 18, boxShadow: '0 2px 8px 0 rgba(31,38,135,0.10)' }}
-          onClick={() => setOpenCadastro(true)}
-        >
-          Novo Roteador
-        </Button>
-      </Box>
-      {error && <Typography color="error" sx={{ mb: 2, fontWeight: 600 }}>{error}</Typography>}
-      <Box sx={{ height: 4 }} />
-      <DataTable columns={columnsWithActions} rows={rows} />
-      {loading && <Typography sx={{ mt: 2 }}>Carregando...</Typography>}
+      }
+    >
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      <StyledCard sx={{ p: 0 }}>
+        <DataTable columns={columnsWithActions} rows={rows} />
+      </StyledCard>
       <Dialog open={openCadastro} onClose={() => setOpenCadastro(false)} maxWidth="sm" fullWidth>
         <Box sx={{ p: 2 }}>
           <CadastroRouters
@@ -170,6 +189,6 @@ export default function ListaRouters() {
           />}
         </Box>
       </Dialog>
-    </Box>
+    </PageLayout>
   );
 }
