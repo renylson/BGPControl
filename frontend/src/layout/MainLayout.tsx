@@ -8,6 +8,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import GroupIcon from '@mui/icons-material/Group';
 import RouterIcon from '@mui/icons-material/Router';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import NetworkPingIcon from '@mui/icons-material/NetworkPing';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordModal from '../components/ChangePasswordModal';
@@ -20,6 +21,7 @@ const drawerWidth = 230;
 const menu = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Operação', icon: <SwapHorizIcon />, path: '/operacao' },
+  { text: 'Looking Glass', icon: <NetworkPingIcon />, path: '/looking-glass' },
   {
     text: 'Cadastros',
     children: [

@@ -11,6 +11,7 @@ import paramiko
 import traceback
 import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 async def get_db():
@@ -100,12 +101,22 @@ async def update_router(router_id: int, router_update: RouterUpdate, db: AsyncSe
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
     
-    for field, value in router_update.dict(exclude_unset=True).items():
-        if field == "ssh_password" and value:
-            # Criptografar senha se fornecida
-            import base64
-            value = base64.b64encode(value.encode()).decode()
-        setattr(router, field, value)
+    update_data = router_update.dict(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        if field == "ssh_password":
+            if value and value.strip():  # Se a senha foi fornecida e não está vazia
+                # Criptografar nova senha
+                import base64
+                value = base64.b64encode(value.encode()).decode()
+                setattr(router, field, value)
+                logger.info(f"Senha do roteador {router_id} foi atualizada")
+            else:
+                # Se a senha está vazia, não alterar a senha atual
+                logger.info(f"Senha do roteador {router_id} mantida (campo vazio)")
+                continue
+        else:
+            setattr(router, field, value)
     
     await db.commit()
     await db.refresh(router)
@@ -290,6 +301,8 @@ async def ping_from_router(
     db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
+    logger.info(f"Ping request: router_id={router_id}, source_ip_id={source_ip_id}, target_ip={target_ip}, is_ipv6={is_ipv6}")
+    
     router_obj = await db.get(Router, router_id)
     if not router_obj:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
@@ -297,20 +310,35 @@ async def ping_from_router(
     # Buscar o IP de origem pelo ID
     source_ip = None
     if router_obj.ip_origens:
+        logger.info(f"IPs de origem disponíveis: {router_obj.ip_origens}")
         for ip_origem in router_obj.ip_origens:
             if ip_origem.get("id") == source_ip_id:
                 source_ip = ip_origem.get("ip")
+                logger.info(f"IP de origem encontrado: {source_ip}")
                 break
+    else:
+        logger.warning(f"Roteador {router_id} não possui IPs de origem configurados")
     
     if not source_ip:
-        raise HTTPException(status_code=404, detail=f"IP de origem com ID {source_ip_id} não encontrado neste roteador")
+        available_ips = []
+        if router_obj.ip_origens:
+            available_ips = [f"ID: {ip.get('id')} - IP: {ip.get('ip')}" for ip in router_obj.ip_origens]
+        error_msg = f"IP de origem com ID {source_ip_id} não encontrado neste roteador. IPs disponíveis: {', '.join(available_ips) if available_ips else 'Nenhum'}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=404, detail=error_msg)
     
     try:
         import paramiko
         import base64
         
         # Decodificar senha
-        password = base64.b64decode(router_obj.ssh_password.encode()).decode()
+        try:
+            password = base64.b64decode(router_obj.ssh_password.encode()).decode()
+        except:
+            # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+            password = router_obj.ssh_password
+        
+        logger.info(f"Conectando via SSH ao roteador {router_obj.ip}:{router_obj.ssh_port}")
         
         # Conectar via SSH
         client = paramiko.SSHClient()
@@ -331,18 +359,44 @@ async def ping_from_router(
         else:
             command = f"ping -c 30 -m 1 -a {source_ip} {target_ip}"
         
+        logger.info(f"Executando comando: {command}")
+        
         # Executar comando diretamente
-        stdin, stdout, stderr = client.exec_command(command, timeout=60)
+        stdin, stdout, stderr = client.exec_command(command, timeout=90)
+        
+        # Configurar timeout nos canais para evitar travamento
+        stdout.channel.settimeout(90.0)
+        stderr.channel.settimeout(90.0)
+        
         output = stdout.read().decode('utf-8', errors='ignore')
         error = stderr.read().decode('utf-8', errors='ignore')
+        
+        # Aguardar o comando terminar para evitar problemas de conexão
+        exit_status = stdout.channel.recv_exit_status()
         
         client.close()
         
         # Incluir erro na saída se houver
         if error:
+            logger.warning(f"Stderr do comando ping: {error}")
             output += f"\n{error}"
-            
+        
+        logger.info(f"Comando ping executado com sucesso (exit: {exit_status})")
         return {"output": output}
         
+    except paramiko.ChannelException as e:
+        error_msg = f"Erro de canal SSH (roteador pode estar limitando sessões): {str(e)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    except paramiko.AuthenticationException as e:
+        error_msg = f"Erro de autenticação SSH: {str(e)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
+    except paramiko.SSHException as e:
+        error_msg = f"Erro de conexão SSH: {str(e)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao executar ping: {str(e)}")
+        error_msg = f"Erro ao executar ping: {str(e)}"
+        logger.error(error_msg)
+        raise HTTPException(status_code=500, detail=error_msg)

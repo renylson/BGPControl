@@ -1,7 +1,7 @@
 
 
 from fastapi import FastAPI
-from app.routers import user, router, peering, peering_group, ssh, ssh_bgp, ssh_bgp_group, peering_group_stream, peering_stream, dashboard
+from app.routers import user, router, peering, peering_group, ssh, ssh_bgp, ssh_bgp_group, peering_group_stream, peering_stream, dashboard, looking_glass
 
 app = FastAPI()
 
@@ -23,6 +23,7 @@ app.include_router(router.router, prefix="/routers", tags=["routers"])
 app.include_router(peering.router, prefix="/peerings", tags=["peerings"])
 app.include_router(peering_group.router, prefix="/peering-groups", tags=["peering-groups"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+app.include_router(looking_glass.router, prefix="/looking-glass", tags=["looking-glass"])
 app.include_router(ssh.router, tags=["ssh"])
 app.include_router(ssh_bgp.router, tags=["ssh-bgp"])
 app.include_router(ssh_bgp_group.router, tags=["ssh-bgp-group"])

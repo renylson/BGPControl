@@ -33,7 +33,18 @@ class RouterUpdate(BaseModel):
 class RouterRead(RouterBase):
     id: int
     is_active: bool
-    ssh_password: str  # Exibe senha em texto puro para teste
+    ssh_password: str = ""  # Não retornar a senha real por segurança
 
     class Config:
         orm_mode = True
+        
+    @classmethod
+    def from_orm(cls, obj):
+        # Substituir a senha por string vazia para não expor a senha codificada
+        data = {}
+        for field in cls.__fields__:
+            if field == 'ssh_password':
+                data[field] = ""  # Sempre retornar vazio
+            else:
+                data[field] = getattr(obj, field)
+        return cls(**data)
