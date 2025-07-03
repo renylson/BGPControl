@@ -32,7 +32,7 @@ function ActionsCell({ row }: { row: any }) {
     setLoading(true);
     setError('');
     try {
-      await api.delete(`/peerings/${row.id}/`);
+      await api.delete(`/peerings/${row.id}`);
       window.location.reload();
     } catch {
       setError('Erro ao remover.');
@@ -78,7 +78,7 @@ export default function ListaPeerings() {
 
   useEffect(() => {
     setLoading(true);
-    api.get('/peerings/')
+    api.get('/peerings')
       .then(res => setRows(res.data))
       .catch(() => setError('Erro ao carregar peerings.'))
       .finally(() => setLoading(false));
@@ -117,7 +117,7 @@ export default function ListaPeerings() {
           <CadastroPeerings
             onSuccess={() => {
               setOpenCadastro(false);
-              api.get('/peerings/').then(res => setRows(res.data));
+              api.get('/peerings').then(res => setRows(res.data));
             }}
           />
         </Box>

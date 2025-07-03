@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.router import Router
-from app.schemas.router import RouterCreate, RouterRead
+from app.schemas.router import RouterCreate, RouterRead, RouterUpdate
 from app.core.config import SessionLocal
 from app.core.deps import get_current_user, is_operator_or_admin
 from app.models.user import User
@@ -17,7 +17,6 @@ async def get_db():
     async with SessionLocal() as session:
         yield session
 
-# --- ENDPOINT DE PREFIXOS ANUNCIADOS ---
 @router.get("/{router_id}/bgp-advertised-prefixes")
 async def get_bgp_advertised_prefixes(router_id: int, peer_ip: str = Query(...), version: int = Query(4), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
@@ -28,13 +27,22 @@ async def get_bgp_advertised_prefixes(router_id: int, peer_ip: str = Query(...),
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
     try:
+        import base64
+        
+        # Decodificar senha
+        try:
+            password = base64.b64decode(router.ssh_password.encode()).decode()
+        except:
+            # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+            password = router.ssh_password
+        
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
             hostname=router.ip,
             port=router.ssh_port,
             username=router.ssh_user,
-            password=router.ssh_password,
+            password=password,
             look_for_keys=False,
             allow_agent=False,
             timeout=10
@@ -86,6 +94,23 @@ async def get_router(router_id: int, db: AsyncSession = Depends(get_db), current
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
     return router
 
+@router.put("/{router_id}", response_model=RouterRead)
+async def update_router(router_id: int, router_update: RouterUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
+    router = await db.get(Router, router_id)
+    if not router:
+        raise HTTPException(status_code=404, detail="Roteador não encontrado")
+    
+    for field, value in router_update.dict(exclude_unset=True).items():
+        if field == "ssh_password" and value:
+            # Criptografar senha se fornecida
+            import base64
+            value = base64.b64encode(value.encode()).decode()
+        setattr(router, field, value)
+    
+    await db.commit()
+    await db.refresh(router)
+    return router
+
 ## Removido update_router pois RouterUpdate não existe
 
 @router.delete("/{router_id}")
@@ -124,6 +149,8 @@ async def test_connection(
     ssh_port = data.get("ssh_port")
     ssh_user = data.get("ssh_user")
     ssh_password = data.get("ssh_password")
+    
+    # Não precisa decodificar aqui pois a senha vem direto do formulário
     try:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -220,13 +247,22 @@ async def get_bgp_status(router_id: int, peer_ip: str = Query(...), db: AsyncSes
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
     try:
+        import base64
+        
+        # Decodificar senha
+        try:
+            password = base64.b64decode(router.ssh_password.encode()).decode()
+        except:
+            # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+            password = router.ssh_password
+        
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(
             hostname=router.ip,
             port=router.ssh_port,
             username=router.ssh_user,
-            password=router.ssh_password,
+            password=password,
             look_for_keys=False,
             allow_agent=False,
             timeout=10
@@ -244,3 +280,69 @@ async def get_bgp_status(router_id: int, peer_ip: str = Query(...), db: AsyncSes
     except Exception as e:
         tb = traceback.format_exc()
         raise HTTPException(status_code=500, detail=f"Erro ao executar comando SSH: {e}\n{tb}")
+
+@router.get("/{router_id}/ping")
+async def ping_from_router(
+    router_id: int, 
+    source_ip_id: int, 
+    target_ip: str, 
+    is_ipv6: bool = Query(False),
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    router_obj = await db.get(Router, router_id)
+    if not router_obj:
+        raise HTTPException(status_code=404, detail="Roteador não encontrado")
+    
+    # Buscar o IP de origem pelo ID
+    source_ip = None
+    if router_obj.ip_origens:
+        for ip_origem in router_obj.ip_origens:
+            if ip_origem.get("id") == source_ip_id:
+                source_ip = ip_origem.get("ip")
+                break
+    
+    if not source_ip:
+        raise HTTPException(status_code=404, detail=f"IP de origem com ID {source_ip_id} não encontrado neste roteador")
+    
+    try:
+        import paramiko
+        import base64
+        
+        # Decodificar senha
+        password = base64.b64decode(router_obj.ssh_password.encode()).decode()
+        
+        # Conectar via SSH
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            hostname=router_obj.ip,
+            port=router_obj.ssh_port,
+            username=router_obj.ssh_user,
+            password=password,
+            timeout=10
+        )
+        
+        # Comando ping com os parâmetros fixos:
+        # Para IPv4: ping -c 30 -m 1 -a <ip_de_origem> <ip_de_peering>
+        # Para IPv6: ping ipv6 -c 30 -a <IPv6_origem> <IPv6_Perring>
+        if is_ipv6:
+            command = f"ping ipv6 -c 30 -m 1 -a {source_ip} {target_ip}"
+        else:
+            command = f"ping -c 30 -m 1 -a {source_ip} {target_ip}"
+        
+        # Executar comando diretamente
+        stdin, stdout, stderr = client.exec_command(command, timeout=60)
+        output = stdout.read().decode('utf-8', errors='ignore')
+        error = stderr.read().decode('utf-8', errors='ignore')
+        
+        client.close()
+        
+        # Incluir erro na saída se houver
+        if error:
+            output += f"\n{error}"
+            
+        return {"output": output}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao executar ping: {str(e)}")

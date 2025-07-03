@@ -30,7 +30,7 @@ export default function ModalCadastroGrupo({ open, onClose, onSuccess }: { open:
   const [allPeerings, setAllPeerings] = useState<any[]>([]);
   useEffect(() => {
     if (open) {
-      api.get('/peerings/').then(res => setAllPeerings(res.data));
+      api.get('/peerings').then(res => setAllPeerings(res.data));
     }
   }, [open]);
 

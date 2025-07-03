@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
 
-@router.post("/register", response_model=UserRead)
+@router.post("/register/", response_model=UserRead)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     db_user = User(
         username=user.username,
@@ -97,7 +97,7 @@ async def change_password(user_id: int, new_password: str, db: AsyncSession = De
     await db.commit()
     return {"ok": True}
 
-@router.post("/login")
+@router.post("/login/")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == form_data.username))
     user = result.scalars().first()

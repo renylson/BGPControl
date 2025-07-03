@@ -1,6 +1,6 @@
 import api from './axios';
 
 export async function getDashboardSummary() {
-  const res = await api.get('/peerings/dashboard/summary/');
+  const res = await api.get('/dashboard/status/');
   return res.data;
 }

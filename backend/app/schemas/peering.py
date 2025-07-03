@@ -8,6 +8,7 @@ class PeeringBase(BaseModel):
     remote_asn_name: str
     note: str | None = None
     router_id: int
+    ip_origem_id: int | None = None
 
 class PeeringCreate(PeeringBase):
     pass
@@ -20,6 +21,7 @@ class PeeringUpdate(BaseModel):
     remote_asn_name: str | None = None
     note: str | None = None
     router_id: int | None = None
+    ip_origem_id: int | None = None
     is_active: bool | None = None
 
 class PeeringRead(PeeringBase):
@@ -27,4 +29,4 @@ class PeeringRead(PeeringBase):
     is_active: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True

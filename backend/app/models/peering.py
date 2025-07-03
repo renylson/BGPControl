@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from app.models.user import Base
 
@@ -12,5 +12,6 @@ class Peering(Base):
     remote_asn_name = Column(String, nullable=False)
     note = Column(String, nullable=True)
     router_id = Column(Integer, ForeignKey("routers.id"), nullable=False)
+    ip_origem_id = Column(BigInteger, nullable=True)  # ID do IP de origem do roteador
     is_active = Column(Boolean, default=True)
     router = relationship("Router")

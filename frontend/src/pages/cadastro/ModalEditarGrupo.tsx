@@ -34,7 +34,7 @@ export default function ModalEditarGrupo({ open, id, onSuccess }: { open: boolea
     setSuccess('');
     setLoadingData(true);
     getRouters().then(rs => setRouters(rs));
-    api.get('/peerings/').then(peeringsRes => {
+    api.get('/peerings').then(peeringsRes => {
       setAllPeerings(peeringsRes.data);
       api.get(`/peering-groups/${id}/`)
         .then(res => {

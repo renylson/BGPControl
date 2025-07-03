@@ -198,6 +198,16 @@ async def bgp_enable_group(group_id: int, db: AsyncSession = Depends(get_db)):
     router = await db.get(Router, group.router_id)
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
+    
+    import base64
+    
+    # Decodificar senha
+    try:
+        password = base64.b64decode(router.ssh_password.encode()).decode()
+    except:
+        # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+        password = router.ssh_password
+    
     # Busca todos os peerings ativos do grupo
     peerings = (await db.execute(select(Peering).join(peering_group_association, Peering.id == peering_group_association.c.peering_id).where(peering_group_association.c.group_id == group_id))).scalars().all()
     peer_ips = [p.ip for p in peerings]
@@ -206,7 +216,6 @@ async def bgp_enable_group(group_id: int, db: AsyncSession = Depends(get_db)):
     hostname = router.ip
     port = router.ssh_port
     username = router.ssh_user
-    password = router.ssh_password
     asn = router.asn
     try:
         output = run_bgp_commands_via_shell(hostname, port, username, password, asn, peer_ips, action="enable")
@@ -227,6 +236,16 @@ async def bgp_disable_group(group_id: int, db: AsyncSession = Depends(get_db)):
     router = await db.get(Router, group.router_id)
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
+    
+    import base64
+    
+    # Decodificar senha
+    try:
+        password = base64.b64decode(router.ssh_password.encode()).decode()
+    except:
+        # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+        password = router.ssh_password
+    
     peerings = (await db.execute(select(Peering).join(peering_group_association, Peering.id == peering_group_association.c.peering_id).where(peering_group_association.c.group_id == group_id))).scalars().all()
     peer_ips = [p.ip for p in peerings]
     if not peer_ips:
@@ -234,7 +253,6 @@ async def bgp_disable_group(group_id: int, db: AsyncSession = Depends(get_db)):
     hostname = router.ip
     port = router.ssh_port
     username = router.ssh_user
-    password = router.ssh_password
     asn = router.asn
     try:
         output = run_bgp_commands_via_shell(hostname, port, username, password, asn, peer_ips, action="disable")

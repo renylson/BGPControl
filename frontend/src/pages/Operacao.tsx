@@ -39,6 +39,7 @@ import DataTable from '../components/DataTable';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
+import NetworkPingIcon from '@mui/icons-material/NetworkPing';
 import { IconButton, Tooltip } from '@mui/material';
 import Backdrop from '@mui/material/Backdrop';
 import api from '../api/axios';
@@ -53,6 +54,7 @@ interface Peering {
   version: 4 | 6;
   remote_asn?: number;
   remote_asn_name?: string;
+  ip_origem_id?: string;
 }
 
 interface Router {
@@ -86,6 +88,17 @@ export default function Operacao() {
     version: 4 | 6,
     name?: string
   } | null>(null);
+  // Novo estado para modal de ping
+  const [pingDialog, setPingDialog] = useState<{
+    open: boolean,
+    loading: boolean,
+    result: string,
+    peer: string,
+    sourceIp: string,
+    version: 4 | 6,
+    name?: string
+  } | null>(null);
+
   // Função para consultar prefixos anunciados
   const handleConsultarPrefixos = async (peerIp: string, version: 4 | 6) => {
     // Busca o nome do peering correspondente
@@ -162,7 +175,7 @@ export default function Operacao() {
     setLoading(true);
     Promise.all([
       api.get('/routers/'),
-      api.get('/peerings/'),
+      api.get('/peerings'),
       api.get('/peering-groups/'),
     ])
       .then(([routersRes, peeringsRes, groupsRes]) => {
@@ -223,6 +236,71 @@ export default function Operacao() {
     const peering = safePeerings.find(p => p.ip === peerIp) || null;
     const router = safeRouters.find(r => r.id === selectedRouter) || null;
     setActionDialog({ open: true, action, peering, grupo: null, router });
+  };
+
+  // Função para executar ping
+  const handlePing = async (peerIp: string, version: 4 | 6) => {
+    // Busca o nome do peering correspondente
+    const safePeerings = Array.isArray(peerings) ? peerings : [];
+    const peering = safePeerings.find(p => p.ip === peerIp && p.version === version);
+    
+    // Busca o ID do IP de origem do peering
+    const sourceIpId = peering?.ip_origem_id;
+    if (!sourceIpId) {
+      setPingDialog({
+        open: true, 
+        loading: false, 
+        result: 'Erro: IP de origem não configurado para este peering.', 
+        peer: peerIp, 
+        sourceIp: '', 
+        version, 
+        name: peering?.name
+      });
+      return;
+    }
+
+    // Buscar o IP real a partir do ID do IP de origem
+    let sourceIp = '';
+    try {
+      const routerRes = await api.get(`/routers/${selectedRouter}`);
+      const routerData = routerRes.data;
+      if (routerData.ip_origens) {
+        const ipOrigem = routerData.ip_origens.find((ip: any) => ip.id === sourceIpId);
+        if (ipOrigem) {
+          sourceIp = ipOrigem.ip;
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do roteador:', error);
+    }
+
+    if (!sourceIp) {
+      setPingDialog({
+        open: true, 
+        loading: false, 
+        result: `Erro: IP de origem com ID "${sourceIpId}" não encontrado no roteador.`, 
+        peer: peerIp, 
+        sourceIp: sourceIpId.toString(), 
+        version, 
+        name: peering?.name
+      });
+      return;
+    }
+
+    setPingDialog({open: true, loading: true, result: '', peer: peerIp, sourceIp, version, name: peering?.name});
+    try {
+      const res = await api.get(`/routers/${selectedRouter}/ping`, { 
+        params: { 
+          source_ip_id: sourceIpId, 
+          target_ip: peerIp, 
+          is_ipv6: version === 6
+        } 
+      });
+      setPingDialog({open: true, loading: false, result: res.data.output || res.data, peer: peerIp, sourceIp, version, name: peering?.name});
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || 'Erro ao executar ping.';
+      setPingDialog({open: true, loading: false, result: errorMessage, peer: peerIp, sourceIp, version, name: peering?.name});
+    }
   };
 
   return (
@@ -355,6 +433,11 @@ export default function Operacao() {
                                 <span role="img" aria-label="prefixos">📡</span>
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title="Executar ping">
+                              <IconButton color="secondary" size="small" onClick={() => handlePing(row.ip, 4)}>
+                                <NetworkPingIcon />
+                              </IconButton>
+                            </Tooltip>
                           </Box>
                         )
                       }
@@ -385,6 +468,11 @@ export default function Operacao() {
                             <Tooltip title="Ver prefixos anunciados">
                               <IconButton color="info" size="small" onClick={() => handleConsultarPrefixos(row.ip, 6)}>
                                 <span role="img" aria-label="prefixos">📡</span>
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Executar ping">
+                              <IconButton color="secondary" size="small" onClick={() => handlePing(row.ip, 6)}>
+                                <NetworkPingIcon />
                               </IconButton>
                             </Tooltip>
                           </Box>
@@ -418,6 +506,28 @@ export default function Operacao() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setPrefixDialog(null)} sx={{ fontSize: 14, minHeight: 36, px: 2, py: 0.5 }}>Fechar</Button>
+          </DialogActions>
+        </Dialog>
+      )}
+      
+      {/* Modal de ping */}
+      {pingDialog && (
+        <Dialog open={pingDialog.open} onClose={() => setPingDialog(null)} maxWidth="md" fullWidth>
+          <DialogTitle>
+            Ping de {pingDialog.sourceIp} para {pingDialog.name ? `${pingDialog.name} (${pingDialog.peer})` : pingDialog.peer} (IPv{pingDialog.version})
+          </DialogTitle>
+          <DialogContent>
+            {pingDialog.loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>
+            ) : null}
+            {!pingDialog.loading && (
+              <Box component="pre" sx={{ background: '#222', color: '#fff', p: 2, borderRadius: 2, fontSize: 14, overflow: 'auto' }}>
+                {pingDialog.result}
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setPingDialog(null)} sx={{ fontSize: 14, minHeight: 36, px: 2, py: 0.5 }}>Fechar</Button>
           </DialogActions>
         </Dialog>
       )}

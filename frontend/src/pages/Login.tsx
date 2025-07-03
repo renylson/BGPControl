@@ -20,7 +20,7 @@ export default function Login() {
       const params = new URLSearchParams();
       params.append('username', username);
       params.append('password', password);
-      const res = await api.post('/users/login', params, {
+      const res = await api.post('/users/login/', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       login(res.data.access_token); // Usa o contexto para salvar o token

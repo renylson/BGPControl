@@ -26,20 +26,33 @@ async def create_peering(peering: PeeringCreate, db: AsyncSession = Depends(get_
     await db.refresh(db_peering)
     return db_peering
 
+@router.post("", response_model=PeeringRead)
+async def create_peering_no_slash(peering: PeeringCreate, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
+    db_peering = Peering(**peering.dict(), is_active=True)
+    db.add(db_peering)
+    await db.commit()
+    await db.refresh(db_peering)
+    return db_peering
+
 @router.get("/", response_model=List[PeeringRead])
 async def list_peerings(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(Peering))
     return result.scalars().all()
 
+@router.get("", response_model=List[PeeringRead])
+async def list_peerings_no_slash(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(Peering))
+    return result.scalars().all()
+
 @router.get("/{peering_id}", response_model=PeeringRead)
-async def get_peering(peering_id: int, db: AsyncSession = Depends(get_db)):
+async def get_peering(peering_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     peering = await db.get(Peering, peering_id)
     if not peering:
         raise HTTPException(status_code=404, detail="Peering não encontrado")
     return peering
 
 @router.put("/{peering_id}", response_model=PeeringRead)
-async def update_peering(peering_id: int, peering_update: PeeringUpdate, db: AsyncSession = Depends(get_db)):
+async def update_peering(peering_id: int, peering_update: PeeringUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     peering = await db.get(Peering, peering_id)
     if not peering:
         raise HTTPException(status_code=404, detail="Peering não encontrado")
@@ -50,7 +63,7 @@ async def update_peering(peering_id: int, peering_update: PeeringUpdate, db: Asy
     return peering
 
 @router.delete("/{peering_id}")
-async def delete_peering(peering_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_peering(peering_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     peering = await db.get(Peering, peering_id)
     if not peering:
         raise HTTPException(status_code=404, detail="Peering não encontrado")
@@ -59,7 +72,7 @@ async def delete_peering(peering_id: int, db: AsyncSession = Depends(get_db)):
     return {"ok": True}
 
 @router.post("/{peering_id}/disable")
-async def disable_peering(peering_id: int, db: AsyncSession = Depends(get_db)):
+async def disable_peering(peering_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     peering = await db.get(Peering, peering_id)
     if not peering:
         raise HTTPException(status_code=404, detail="Peering não encontrado")
@@ -68,7 +81,7 @@ async def disable_peering(peering_id: int, db: AsyncSession = Depends(get_db)):
     return {"ok": True}
 
 @router.post("/{peering_id}/enable")
-async def enable_peering(peering_id: int, db: AsyncSession = Depends(get_db)):
+async def enable_peering(peering_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(is_operator_or_admin)):
     peering = await db.get(Peering, peering_id)
     if not peering:
         raise HTTPException(status_code=404, detail="Peering não encontrado")
@@ -125,10 +138,19 @@ async def bgp_enable(peering_id: int, db: AsyncSession = Depends(get_db)):
     router = await db.get(Router, peering.router_id)
     if not router:
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
+    
+    import base64
+    
+    # Decodificar senha
+    try:
+        password = base64.b64decode(router.ssh_password.encode()).decode()
+    except:
+        # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+        password = router.ssh_password
+    
     hostname = router.ip
     port = router.ssh_port
     username = router.ssh_user
-    password = router.ssh_password
     asn = router.asn
     peer_ips = [peering.ip]
     try:
@@ -145,6 +167,28 @@ async def bgp_disable(peering_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Peering não encontrado")
     router = await db.get(Router, peering.router_id)
     if not router:
+        raise HTTPException(status_code=404, detail="Roteador não encontrado")
+    
+    import base64
+    
+    # Decodificar senha
+    try:
+        password = base64.b64decode(router.ssh_password.encode()).decode()
+    except:
+        # Se falhar na decodificação, usar a senha como está (caso não esteja codificada)
+        password = router.ssh_password
+    
+    hostname = router.ip
+    port = router.ssh_port
+    username = router.ssh_user
+    asn = router.asn
+    peer_ips = [peering.ip]
+    try:
+        output = run_bgp_commands_via_shell(hostname, port, username, password, asn, peer_ips, action="disable")
+        return {"output": output}
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao executar comandos BGP: {e}\n{tb}")
         raise HTTPException(status_code=404, detail="Roteador não encontrado")
     hostname = router.ip
     port = router.ssh_port

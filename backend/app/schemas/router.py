@@ -18,6 +18,7 @@ class RouterBase(BaseModel):
 class RouterCreate(RouterBase):
     ssh_password: str
 
+class RouterUpdate(BaseModel):
     name: str | None = None
     ip: str | None = None
     ssh_port: int | None = None
