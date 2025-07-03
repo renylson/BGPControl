@@ -7,7 +7,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     action = Column(String(100), nullable=False)  # CREATE, UPDATE, DELETE, LOGIN, LOGOUT
     resource_type = Column(String(50), nullable=False)  # user, router, peering, etc
     resource_id = Column(String(50), nullable=True)  # ID do recurso afetado
@@ -20,5 +20,5 @@ class AuditLog(Base):
     details = Column(Text, nullable=True)  # Detalhes adicionais
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
-    # Relacionamento com User
+    # Relacionamento com User (pode ser nulo para tentativas de login inválidas)
     user = relationship("User", back_populates="audit_logs")
