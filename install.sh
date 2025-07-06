@@ -580,7 +580,7 @@ EOF
             run_as_user $SERVICE_USER bash -c "
                 source .venv/bin/activate
                 cd $INSTALL_DIR/backend
-                python3 create_admin.py '$ADMIN_USERNAME' '$ADMIN_PASSWORD' '$ADMIN_NAME' 'admin'
+                python3 create_admin.py '$ADMIN_USERNAME' '$ADMIN_PASSWORD' '$ADMIN_NAME' 'Administrador'
             "
         else
             log_error "Falha na inicialização do banco de dados"
