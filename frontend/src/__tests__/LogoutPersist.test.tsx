@@ -44,6 +44,6 @@ describe('Logout e persistência de autenticação', () => {
       </MemoryRouter>
     );
     // Usuário autenticado deve ver o dashboard
-    expect(screen.queryByText(/login bgpview/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/login bgpcontrol/i)).not.toBeInTheDocument();
   });
 });

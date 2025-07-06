@@ -27,7 +27,7 @@ describe('Navegação protegida', () => {
         </MemoryRouter>
       </AuthProvider>
     );
-    expect(screen.getByText(/login bgpview/i)).toBeInTheDocument();
+    expect(screen.getByText(/login bgpcontrol/i)).toBeInTheDocument();
   });
 
   it('permite acesso ao dashboard com login', () => {
@@ -43,6 +43,6 @@ describe('Navegação protegida', () => {
       </AuthProvider>
     );
     // Não deve renderizar o login
-    expect(screen.queryByText(/login bgpview/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/login bgpcontrol/i)).not.toBeInTheDocument();
   });
 });

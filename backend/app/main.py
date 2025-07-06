@@ -39,4 +39,4 @@ app.include_router(peering_stream.router, prefix="/api/peerings", tags=["peering
 
 @app.get("/")
 def read_root():
-    return {"message": "SaaS BGPView API rodando!"}
+    return {"message": "SaaS BGPControl API rodando!"}

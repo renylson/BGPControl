@@ -2,7 +2,7 @@
 
 #################################################################
 #                                                               #
-#           BGPView - Instalador Automatizado                  #
+#           BGPControl - Instalador Automatizado                  #
 #           Sistema de Gerenciamento BGP                       #
 #                                                               #
 #################################################################
@@ -20,10 +20,10 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Variáveis globais
-INSTALL_DIR="/opt/bgpview"
-SERVICE_USER="bgpview"
-DB_NAME="bgpview"
-DB_USER="bgpview"
+INSTALL_DIR="/opt/bgpcontrol"
+SERVICE_USER="bgpcontrol"
+DB_NAME="bgpcontrol"
+DB_USER="bgpcontrol"
 DOMAIN=""
 USE_DOMAIN=false
 USE_SSL=false
@@ -124,7 +124,7 @@ parse_arguments() {
 
 # Mostrar ajuda
 show_help() {
-    echo -e "${BOLD}BGPView Instalador - Uso:${NC}"
+    echo -e "${BOLD}BGPControl Instalador - Uso:${NC}"
     echo ""
     echo "  sudo bash install.sh                    # Instalação interativa"
     echo "  sudo bash install.sh --config FILE      # Instalação não-interativa"
@@ -190,10 +190,10 @@ load_config_file() {
         fi
         
         # Aplicar configurações padrão se não definidas
-        DB_NAME=${DB_NAME:-"bgpview"}
-        DB_USER=${DB_USER:-"bgpview"}
-        INSTALL_DIR=${INSTALL_DIR:-"/opt/bgpview"}
-        SERVICE_USER=${SERVICE_USER:-"bgpview"}
+        DB_NAME=${DB_NAME:-"bgpcontrol"}
+        DB_USER=${DB_USER:-"bgpcontrol"}
+        INSTALL_DIR=${INSTALL_DIR:-"/opt/bgpcontrol"}
+        SERVICE_USER=${SERVICE_USER:-"bgpcontrol"}
         INSTALL_NGINX=${INSTALL_NGINX:-true}
         SETUP_FIREWALL=${SETUP_FIREWALL:-true}
         
@@ -225,17 +225,17 @@ show_banner() {
     clear
     echo -e "${PURPLE}${BOLD}"
     cat << 'EOF'
-██████╗  ██████╗ ██████╗ ██╗   ██╗██╗███████╗██╗    ██╗
-██╔══██╗██╔════╝ ██╔══██╗██║   ██║██║██╔════╝██║    ██║
-██████╔╝██║  ███╗██████╔╝██║   ██║██║█████╗  ██║ █╗ ██║
-██╔══██╗██║   ██║██╔═══╝ ╚██╗ ██╔╝██║██╔══╝  ██║███╗██║
-██████╔╝╚██████╔╝██║      ╚████╔╝ ██║███████╗╚███╔███╔╝
-╚═════╝  ╚═════╝ ╚═╝       ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ 
+██████╗  ██████╗ ██████╗  ██████╗ ██████╗ ███╗   ██╗████████╗██████╗  ██████╗ ██╗     
+██╔══██╗██╔════╝ ██╔══██╗██╔════╝██╔═══██╗████╗  ██║╚══██╔══╝██╔══██╗██╔═══██╗██║     
+██████╔╝██║  ███╗██████╔╝██║     ██║   ██║██╔██╗ ██║   ██║   ██████╔╝██║   ██║██║     
+██╔══██╗██║   ██║██╔═══╝ ██║     ██║   ██║██║╚██╗██║   ██║   ██╔══██╗██║   ██║██║     
+██████╔╝╚██████╔╝██║     ╚██████╗╚██████╔╝██║ ╚████║   ██║   ██║  ██║╚██████╔╝███████╗
+╚═════╝  ╚═════╝ ╚═╝      ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
                                                         
         Sistema de Gerenciamento BGP - Instalador
 EOF
     echo -e "${NC}\n"
-    echo -e "${CYAN}Bem-vindo ao instalador automatizado do BGPView!${NC}"
+    echo -e "${CYAN}Bem-vindo ao instalador automatizado do BGPControl!${NC}"
     echo -e "${CYAN}Este script instalará e configurará todo o sistema.${NC}\n"
 }
 
@@ -265,7 +265,7 @@ collect_user_input() {
             log_info "Configurando para acesso por domínio"
             
             while true; do
-                read -p "Digite seu domínio (ex: bgpview.exemplo.com): " DOMAIN
+                read -p "Digite seu domínio (ex: bgpcontrol.exemplo.com): " DOMAIN
                 if validate_domain "$DOMAIN"; then
                     break
                 else
@@ -763,7 +763,7 @@ EOF
     cat >> .env << EOF
 
 # Configurações da aplicação
-VITE_APP_NAME=BGPView
+VITE_APP_NAME=BGPControl
 VITE_APP_VERSION=1.0.0
 EOF
     
@@ -777,10 +777,10 @@ EOF
 setup_systemd() {
     log_header "CONFIGURANDO SERVIÇO SYSTEMD"
     
-    log_info "Criando serviço bgpview-backend..."
-    cat > /etc/systemd/system/bgpview-backend.service << EOF
+    log_info "Criando serviço bgpcontrol-backend..."
+    cat > /etc/systemd/system/bgpcontrol-backend.service << EOF
 [Unit]
-Description=BGPView Backend API
+Description=BGPControl Backend API
 After=network.target postgresql.service
 Requires=postgresql.service
 
@@ -804,14 +804,14 @@ EOF
     
     log_info "Habilitando e iniciando serviço..."
     systemctl daemon-reload
-    systemctl enable bgpview-backend
-    systemctl start bgpview-backend
+    systemctl enable bgpcontrol-backend
+    systemctl start bgpcontrol-backend
     
     # Aguardar alguns segundos para o serviço iniciar
     sleep 5
     
-    if systemctl is-active --quiet bgpview-backend; then
-        log_success "Serviço bgpview-backend iniciado com sucesso"
+    if systemctl is-active --quiet bgpcontrol-backend; then
+        log_success "Serviço bgpcontrol-backend iniciado com sucesso"
     else
         log_error "Erro ao iniciar o serviço bgpview-backend"
         systemctl status bgpview-backend

@@ -84,7 +84,7 @@ export default function MainLayoutWithFooter() {
             </IconButton>
             <img
               src={logo}
-              alt="BGPView Logo"
+              alt="BGPControl Logo"
               style={{
                 height: '48px',
                 borderRadius: 8,
@@ -315,7 +315,7 @@ export default function MainLayoutWithFooter() {
         </Box>
         {/* Rodapé fixo */}
         <Box component="footer" sx={{ width: '100%', py: 2, px: 2, bgcolor: 'rgba(35,42,54,0.98)', color: '#b0b8c1', textAlign: 'center', fontSize: 14, letterSpacing: 1, borderTop: '1px solid #232a36', mt: 2 }}>
-          &copy; {new Date().getFullYear()} BGPView - Todos os direitos reservados
+          &copy; {new Date().getFullYear()} BGPControl - Todos os direitos reservados
         </Box>
       </Box>
     </Box>

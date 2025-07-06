@@ -1,4 +1,4 @@
-# BGPView - Sistema de Gerenciamento BGP
+# BGPControl - Sistema de Gerenciamento BGP
 
 Sistema completo para gerenciamento de peerings BGP, roteadores e grupos de peering com backend em FastAPI e frontend em React/TypeScript. O sistema permite cadastrar roteadores, configurar peerings BGP, agrupar peerings e executar comandos SSH nos equipamentos de forma automatizada.
 
@@ -103,7 +103,7 @@ Sistema completo para gerenciamento de peerings BGP, roteadores e grupos de peer
 
 ### Instalador Automatizado
 
-O BGPView possui um instalador automatizado que configura tudo em um Debian limpo:
+O BGPControl possui um instalador automatizado que configura tudo em um Debian limpo:
 
 ```bash
 # Baixar e executar o instalador
@@ -133,7 +133,7 @@ sudo ./install.sh
 
 ### Desinstalação
 
-Para remover completamente o BGPView:
+Para remover completamente o BGPControl:
 
 ```bash
 # Baixar e executar o desinstalador
