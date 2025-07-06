@@ -6,7 +6,7 @@ import asyncpg
 
 async def alter_audit_logs_table():
     # Ler configurações do banco
-    database_url = os.getenv('DATABASE_URL', 'postgresql://bgpview_user:bgpview_pass@localhost/bgpview_db')
+    database_url = os.getenv('DATABASE_URL', 'postgresql://bgpcontrol:bgpcontrol@localhost/bgpcontrol')
     
     # Extrair parâmetros da URL
     from urllib.parse import urlparse

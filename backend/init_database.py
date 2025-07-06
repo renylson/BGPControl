@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-BGPView - Script de Inicialização do Banco de Dados
+BGPControl - Script de Inicialização do Banco de Dados
 
-Este script inicializa o banco de dados do BGPView criando todas as tabelas
+Este script inicializa o banco de dados do BGPControl criando todas as tabelas
 necessárias e dados iniciais opcionais.
 """
 
@@ -211,7 +211,7 @@ async def verify_database_integrity():
 
 async def main():
     """Função principal"""
-    print("🗄️  BGPView - Inicializador do Banco de Dados")
+    print("🗄️  BGPControl - Inicializador do Banco de Dados")
     print("=" * 50)
     
     # Verificar conexão

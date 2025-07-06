@@ -5,7 +5,7 @@ Migration para alterar ip_origem_id de STRING para INTEGER
 
 import sys
 import os
-sys.path.append('/opt/bgpview/backend')
+sys.path.append('/opt/bgpcontrol/backend')
 
 import asyncio
 from sqlalchemy import text

@@ -507,7 +507,7 @@ clone_project() {
         git pull origin main
     else
         log_info "Clonando repositório..."
-        git clone https://github.com/renylson/bgpview.git $INSTALL_DIR
+        git clone https://github.com/renylson/bgpcontrol.git $INSTALL_DIR
     fi
     
     log_info "Ajustando permissões..."
@@ -813,8 +813,8 @@ EOF
     if systemctl is-active --quiet bgpcontrol-backend; then
         log_success "Serviço bgpcontrol-backend iniciado com sucesso"
     else
-        log_error "Erro ao iniciar o serviço bgpview-backend"
-        systemctl status bgpview-backend
+        log_error "Erro ao iniciar o serviço bgpcontrol-backend"
+        systemctl status bgpcontrol-backend
         exit 1
     fi
 }
@@ -835,7 +835,7 @@ setup_nginx() {
     
     if [[ $USE_DOMAIN == true ]]; then
         # Configuração para domínio
-        cat > /etc/nginx/sites-available/bgpview << EOF
+        cat > /etc/nginx/sites-available/bgpcontrol << EOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -904,13 +904,13 @@ server {
     }
     
     # Logs
-    access_log /var/log/nginx/bgpview_access.log;
-    error_log /var/log/nginx/bgpview_error.log;
+    access_log /var/log/nginx/bgpcontrol_access.log;
+    error_log /var/log/nginx/bgpcontrol_error.log;
 }
 EOF
     else
         # Configuração para IP
-        cat > /etc/nginx/sites-available/bgpview << EOF
+        cat > /etc/nginx/sites-available/bgpcontrol << EOF
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -979,14 +979,14 @@ server {
     }
     
     # Logs
-    access_log /var/log/nginx/bgpview_access.log;
-    error_log /var/log/nginx/bgpview_error.log;
+    access_log /var/log/nginx/bgpcontrol_access.log;
+    error_log /var/log/nginx/bgpcontrol_error.log;
 }
 EOF
     fi
     
     log_info "Habilitando site..."
-    ln -sf /etc/nginx/sites-available/bgpview /etc/nginx/sites-enabled/
+    ln -sf /etc/nginx/sites-available/bgpcontrol /etc/nginx/sites-enabled/
     rm -f /etc/nginx/sites-enabled/default
     
     log_info "Testando configuração do Nginx..."
@@ -1099,14 +1099,14 @@ setup_firewall() {
 create_maintenance_scripts() {
     log_header "CRIANDO SCRIPTS DE MANUTENÇÃO"
     
-    mkdir -p /usr/local/bin/bgpview
+    mkdir -p /usr/local/bin/bgpcontrol
     
     # Script de backup
-    cat > /usr/local/bin/bgpview/backup.sh << EOF
+    cat > /usr/local/bin/bgpcontrol/backup.sh << EOF
 #!/bin/bash
-# Script de backup do BGPView
+# Script de backup do BGPControl
 
-BACKUP_DIR="/var/backups/bgpview"
+BACKUP_DIR="/var/backups/bgpcontrol"
 DATE=\$(date +%Y%m%d_%H%M%S)
 
 mkdir -p \$BACKUP_DIR
@@ -1125,17 +1125,17 @@ echo "Backup concluído: \$DATE"
 EOF
 
     # Script de atualização
-    cat > /usr/local/bin/bgpview/update.sh << EOF
+    cat > /usr/local/bin/bgpcontrol/update.sh << EOF
 #!/bin/bash
-# Script de atualização do BGPView
+# Script de atualização do BGPControl
 
-echo "=== Atualização do BGPView ==="
+echo "=== Atualização do BGPControl ==="
 echo ""
 
 cd $INSTALL_DIR
 
 echo "Verificando estado atual..."
-if ! systemctl is-active --quiet bgpview-backend; then
+if ! systemctl is-active --quiet bgpcontrol-backend; then
     echo "⚠️  Serviço backend não está rodando"
     read -p "Deseja continuar mesmo assim? (s/N): " confirm
     if [[ ! \$confirm =~ ^[SsYy]\$ ]]; then
@@ -1145,14 +1145,14 @@ if ! systemctl is-active --quiet bgpview-backend; then
 fi
 
 echo "Fazendo backup antes da atualização..."
-/usr/local/bin/bgpview/backup.sh
+/usr/local/bin/bgpcontrol/backup.sh
 
 echo "Parando serviços..."
-systemctl stop bgpview-backend
+systemctl stop bgpcontrol-backend
 
 echo "Salvando configurações atuais..."
-cp $INSTALL_DIR/backend/.env /tmp/bgpview_env_backup_\$(date +%Y%m%d_%H%M%S)
-cp $INSTALL_DIR/frontend/.env /tmp/bgpview_frontend_env_backup_\$(date +%Y%m%d_%H%M%S)
+cp $INSTALL_DIR/backend/.env /tmp/bgpcontrol_env_backup_\$(date +%Y%m%d_%H%M%S)
+cp $INSTALL_DIR/frontend/.env /tmp/bgpcontrol_frontend_env_backup_\$(date +%Y%m%d_%H%M%S)
 
 echo "Atualizando código..."
 if sudo -u $SERVICE_USER git pull origin main; then
@@ -1210,7 +1210,7 @@ else
 fi
 
 echo "Reiniciando serviços..."
-systemctl start bgpview-backend
+systemctl start bgpcontrol-backend
 systemctl reload nginx
 
 # Aguardar alguns segundos
@@ -1218,11 +1218,11 @@ sleep 5
 
 # Verificar se os serviços estão funcionando
 echo "Verificando serviços..."
-if systemctl is-active --quiet bgpview-backend; then
+if systemctl is-active --quiet bgpcontrol-backend; then
     echo "✅ Serviço backend OK"
 else
     echo "❌ Erro no serviço backend"
-    echo "Verifique: systemctl status bgpview-backend"
+    echo "Verifique: systemctl status bgpcontrol-backend"
 fi
 
 if systemctl is-active --quiet nginx; then
@@ -1234,27 +1234,27 @@ fi
 
 echo ""
 echo "Verificando banco de dados..."
-/usr/local/bin/bgpview/check-db.sh
+/usr/local/bin/bgpcontrol/check-db.sh
 
 echo ""
 echo "=== Atualização Concluída ==="
 echo "Verifique se o sistema está funcionando normalmente"
-echo "Logs do backend: journalctl -u bgpview-backend -f"
+echo "Logs do backend: journalctl -u bgpcontrol-backend -f"
 EOF
 
     # Script de status
-    cat > /usr/local/bin/bgpview/status.sh << EOF
+    cat > /usr/local/bin/bgpcontrol/status.sh << EOF
 #!/bin/bash
-# Script de status do BGPView
+# Script de status do BGPControl
 
-echo "=== Status do Sistema BGPView ==="
+echo "=== Status do Sistema BGPControl ==="
 echo ""
 
 # Informações do sistema
 echo "📋 INFORMAÇÕES DO SISTEMA:"
 echo "Data/Hora: \$(date)"
 echo "Uptime: \$(uptime -p)"
-echo "Usuário BGPView: $SERVICE_USER"
+echo "Usuário BGPControl: $SERVICE_USER"
 echo "Diretório: $INSTALL_DIR"
 echo ""
 
@@ -1262,11 +1262,11 @@ echo ""
 echo "🔧 STATUS DOS SERVIÇOS:"
 echo "========================"
 
-echo "Backend (bgpview-backend):"
-if systemctl is-active --quiet bgpview-backend; then
+echo "Backend (bgpcontrol-backend):"
+if systemctl is-active --quiet bgpcontrol-backend; then
     echo "✅ Ativo"
-    echo "   PID: \$(systemctl show bgpview-backend -p MainPID --value)"
-    echo "   Desde: \$(systemctl show bgpview-backend -p ActiveEnterTimestamp --value | cut -d' ' -f2-3)"
+    echo "   PID: \$(systemctl show bgpcontrol-backend -p MainPID --value)"
+    echo "   Desde: \$(systemctl show bgpcontrol-backend -p ActiveEnterTimestamp --value | cut -d' ' -f2-3)"
 else
     echo "❌ Inativo"
 fi
@@ -1367,14 +1367,14 @@ echo ""
 echo "📜 LOGS RECENTES (últimas 5 linhas):"
 echo "===================================="
 echo "Backend:"
-journalctl -u bgpview-backend -n 5 --no-pager | tail -5 | while read line; do
+journalctl -u bgpcontrol-backend -n 5 --no-pager | tail -5 | while read line; do
     echo "   \$line"
 done
 
 echo ""
 echo "Nginx (access):"
-if [[ -f /var/log/nginx/bgpview_access.log ]]; then
-    tail -3 /var/log/nginx/bgpview_access.log | while read line; do
+if [[ -f /var/log/nginx/bgpcontrol_access.log ]]; then
+    tail -3 /var/log/nginx/bgpcontrol_access.log | while read line; do
         echo "   \$line"
     done
 else
@@ -1383,15 +1383,15 @@ fi
 
 echo ""
 echo "=== Status verificado em \$(date) ==="
-echo "Para logs detalhados: journalctl -u bgpview-backend -f"
+echo "Para logs detalhados: journalctl -u bgpcontrol-backend -f"
 EOF
 
     # Script de verificação do banco
-    cat > /usr/local/bin/bgpview/check-db.sh << EOF
+    cat > /usr/local/bin/bgpcontrol/check-db.sh << EOF
 #!/bin/bash
 # Script de verificação do banco de dados
 
-echo "=== Verificação do Banco de Dados BGPView ==="
+echo "=== Verificação do Banco de Dados BGPControl ==="
 echo ""
 
 # Verificar conexão
@@ -1494,7 +1494,7 @@ if [[ \$missing -eq 0 ]]; then
     fi
 else
     echo ""
-    echo "❌ \$missing tabela(s) faltando - execute: bgpview-repair-db"
+    echo "❌ \$missing tabela(s) faltando - execute: bgpcontrol-repair-db"
 fi
 
 echo ""
@@ -1542,11 +1542,11 @@ fi
 EOF
 
     # Script de reparo do banco
-    cat > /usr/local/bin/bgpview/repair-db.sh << EOF
+    cat > /usr/local/bin/bgpcontrol/repair-db.sh << EOF
 #!/bin/bash
 # Script de reparo do banco de dados
 
-echo "=== Reparo do Banco de Dados BGPView ==="
+echo "=== Reparo do Banco de Dados BGPControl ==="
 echo ""
 
 read -p "Deseja tentar reparar o banco de dados? (s/N): " confirm
@@ -1559,11 +1559,11 @@ echo "Iniciando reparo..."
 
 # Parar serviço durante reparo
 echo "Parando serviço backend..."
-systemctl stop bgpview-backend
+systemctl stop bgpcontrol-backend
 
 # Fazer backup antes do reparo
 echo "Fazendo backup de segurança..."
-backup_file="/tmp/bgpview_backup_\$(date +%Y%m%d_%H%M%S).sql"
+backup_file="/tmp/bgpcontrol_backup_\$(date +%Y%m%d_%H%M%S).sql"
 if PGPASSWORD="$DB_PASSWORD" pg_dump -h localhost -U $DB_USER $DB_NAME > "\$backup_file" 2>/dev/null; then
     echo "✅ Backup criado: \$backup_file"
 else
@@ -1615,7 +1615,7 @@ asyncio.run(create_tables())
         else
             echo "❌ Falha na criação manual das tabelas"
             echo "Restaurando serviço..."
-            systemctl start bgpview-backend
+            systemctl start bgpcontrol-backend
             exit 1
         fi
     fi
@@ -1652,22 +1652,22 @@ fi
 # Reiniciar serviço
 echo ""
 echo "Reiniciando serviço backend..."
-systemctl start bgpview-backend
+systemctl start bgpcontrol-backend
 
 # Aguardar alguns segundos
 sleep 5
 
 # Verificar se o serviço está funcionando
-if systemctl is-active --quiet bgpview-backend; then
+if systemctl is-active --quiet bgpcontrol-backend; then
     echo "✅ Serviço backend reiniciado com sucesso"
 else
     echo "❌ Erro ao reiniciar serviço backend"
-    echo "Verifique: systemctl status bgpview-backend"
+    echo "Verifique: systemctl status bgpcontrol-backend"
 fi
 
 echo ""
 echo "Verificando resultado do reparo..."
-/usr/local/bin/bgpview/check-db.sh
+/usr/local/bin/bgpcontrol/check-db.sh
 
 echo ""
 echo "=== Reparo Concluído ==="
@@ -1676,11 +1676,11 @@ echo "Mantenha o backup até confirmar que tudo está funcionando"
 EOF
 
     # Script de teste da instalação
-    cat > /usr/local/bin/bgpview/test-install.sh << EOF
+    cat > /usr/local/bin/bgpcontrol/test-install.sh << EOF
 #!/bin/bash
-# Script para testar a instalação do BGPView
+# Script para testar a instalação do BGPControl
 
-echo "=== Teste da Instalação BGPView ==="
+echo "=== Teste da Instalação BGPControl ==="
 echo ""
 
 # Função para testar componente
@@ -1708,7 +1708,7 @@ passed_tests=0
 # Teste 1: Serviços systemd
 echo "🔧 TESTANDO SERVIÇOS:"
 ((total_tests++))
-if test_component "Backend Service" "systemctl is-active --quiet bgpview-backend" "Serviço bgpview-backend não está ativo"; then
+if test_component "Backend Service" "systemctl is-active --quiet bgpcontrol-backend" "Serviço bgpcontrol-backend não está ativo"; then
     ((passed_tests++))
 fi
 
@@ -1818,21 +1818,21 @@ if [[ \$passed_tests -eq \$total_tests ]]; then
 else
     echo ""
     echo "⚠️  ALGUNS TESTES FALHARAM"
-    echo "❌ Verifique os erros acima e execute bgpview-repair-db se necessário"
+    echo "❌ Verifique os erros acima e execute bgpcontrol-repair-db se necessário"
     exit 1
 fi
 EOF
     
     # Tornar scripts executáveis
-    chmod +x /usr/local/bin/bgpview/*.sh
+    chmod +x /usr/local/bin/bgpcontrol/*.sh
     
     # Criar links simbólicos para fácil acesso
-    ln -sf /usr/local/bin/bgpview/status.sh /usr/local/bin/bgpview-status
-    ln -sf /usr/local/bin/bgpview/backup.sh /usr/local/bin/bgpview-backup
-    ln -sf /usr/local/bin/bgpview/update.sh /usr/local/bin/bgpview-update
-    ln -sf /usr/local/bin/bgpview/check-db.sh /usr/local/bin/bgpview-check-db
-    ln -sf /usr/local/bin/bgpview/repair-db.sh /usr/local/bin/bgpview-repair-db
-    ln -sf /usr/local/bin/bgpview/test-install.sh /usr/local/bin/bgpview-test
+    ln -sf /usr/local/bin/bgpcontrol/status.sh /usr/local/bin/bgpcontrol-status
+    ln -sf /usr/local/bin/bgpcontrol/backup.sh /usr/local/bin/bgpcontrol-backup
+    ln -sf /usr/local/bin/bgpcontrol/update.sh /usr/local/bin/bgpcontrol-update
+    ln -sf /usr/local/bin/bgpcontrol/check-db.sh /usr/local/bin/bgpcontrol-check-db
+    ln -sf /usr/local/bin/bgpcontrol/repair-db.sh /usr/local/bin/bgpcontrol-repair-db
+    ln -sf /usr/local/bin/bgpcontrol/test-install.sh /usr/local/bin/bgpcontrol-test
     
     log_success "Scripts de manutenção criados"
 }
@@ -1843,7 +1843,7 @@ show_completion_info() {
     
     local server_ip=$(hostname -I | awk '{print $1}')
     
-    echo -e "${GREEN}${BOLD}🎉 BGPView instalado com sucesso!${NC}\n"
+    echo -e "${GREEN}${BOLD}🎉 BGPControl instalado com sucesso!${NC}\n"
     
     echo -e "${BOLD}📋 INFORMAÇÕES DE ACESSO:${NC}"
     echo "================================="
@@ -1878,30 +1878,30 @@ show_completion_info() {
     echo ""
     echo -e "${BOLD}🔧 COMANDOS ÚTEIS:${NC}"
     echo "================================="
-    echo -e "• ${CYAN}bgpview-status${NC}       - Ver status dos serviços"
-    echo -e "• ${CYAN}bgpview-test${NC}         - Testar instalação"
-    echo -e "• ${CYAN}bgpview-backup${NC}       - Fazer backup do sistema"
-    echo -e "• ${CYAN}bgpview-update${NC}       - Atualizar o sistema"
-    echo -e "• ${CYAN}bgpview-check-db${NC}     - Verificar banco de dados"
-    echo -e "• ${CYAN}bgpview-repair-db${NC}    - Reparar banco de dados"
+    echo -e "• ${CYAN}bgpcontrol-status${NC}       - Ver status dos serviços"
+    echo -e "• ${CYAN}bgpcontrol-test${NC}         - Testar instalação"
+    echo -e "• ${CYAN}bgpcontrol-backup${NC}       - Fazer backup do sistema"
+    echo -e "• ${CYAN}bgpcontrol-update${NC}       - Atualizar o sistema"
+    echo -e "• ${CYAN}bgpcontrol-check-db${NC}     - Verificar banco de dados"
+    echo -e "• ${CYAN}bgpcontrol-repair-db${NC}    - Reparar banco de dados"
     echo ""
-    echo -e "• ${CYAN}systemctl status bgpview-backend${NC} - Status do backend"
-    echo -e "• ${CYAN}journalctl -u bgpview-backend -f${NC} - Logs do backend"
-    echo -e "• ${CYAN}systemctl restart bgpview-backend${NC} - Reiniciar backend"
+    echo -e "• ${CYAN}systemctl status bgpcontrol-backend${NC} - Status do backend"
+    echo -e "• ${CYAN}journalctl -u bgpcontrol-backend -f${NC} - Logs do backend"
+    echo -e "• ${CYAN}systemctl restart bgpcontrol-backend${NC} - Reiniciar backend"
     
     echo ""
     echo -e "${BOLD}📁 DIRETÓRIOS IMPORTANTES:${NC}"
     echo "================================="
     echo -e "• ${BOLD}Instalação:${NC} $INSTALL_DIR"
-    echo -e "• ${BOLD}Logs Backend:${NC} journalctl -u bgpview-backend"
+    echo -e "• ${BOLD}Logs Backend:${NC} journalctl -u bgpcontrol-backend"
     echo -e "• ${BOLD}Logs Nginx:${NC} /var/log/nginx/"
-    echo -e "• ${BOLD}Backups:${NC} /var/backups/bgpview/"
+    echo -e "• ${BOLD}Backups:${NC} /var/backups/bgpcontrol/"
     
     echo ""
     echo -e "${YELLOW}${BOLD}⚠️  IMPORTANTE:${NC}"
     echo "• Anote as credenciais do administrador em local seguro"
-    echo "• Configure backups regulares com: bgpview-backup"
-    echo "• Para atualizações, use: bgpview-update"
+    echo "• Configure backups regulares com: bgpcontrol-backup"
+    echo "• Para atualizações, use: bgpcontrol-update"
     
     if [[ $USE_DOMAIN == true && $USE_SSL == false ]]; then
         echo "• Configure SSL/HTTPS para produção"
@@ -1946,11 +1946,11 @@ main() {
     log_header "VERIFICAÇÃO FINAL"
     log_info "Executando teste da instalação..."
     
-    if /usr/local/bin/bgpview/test-install.sh; then
+    if /usr/local/bin/bgpcontrol/test-install.sh; then
         log_success "Todos os testes passaram!"
     else
         log_warning "Alguns testes falharam - verifique os detalhes acima"
-        log_info "Execute 'bgpview-repair-db' se necessário"
+        log_info "Execute 'bgpcontrol-repair-db' se necessário"
     fi
     
     show_completion_info

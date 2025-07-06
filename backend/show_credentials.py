@@ -4,7 +4,7 @@ Teste para mostrar as credenciais que estão sendo enviadas para o roteador
 """
 import asyncio
 import sys
-sys.path.insert(0, '/opt/bgpview/backend')
+sys.path.insert(0, '/opt/bgpcontrol/backend')
 
 async def show_credentials():
     try:

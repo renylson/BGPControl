@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-BGPView - Script para Criar Usuário Administrador
+BGPControl - Script para Criar Usuário Administrador
 
-Este script cria um usuário administrador no sistema BGPView.
+Este script cria um usuário administrador no sistema BGPControl.
 Uso: python3 create_admin.py <username> <password> <name> <profile>
 """
 
@@ -95,7 +95,7 @@ async def main():
     name = sys.argv[3]
     profile = sys.argv[4] if len(sys.argv) > 4 else "Administrador"
     
-    print("👤 BGPView - Criador de Usuário Administrador")
+    print("👤 BGPControl - Criador de Usuário Administrador")
     print("=" * 50)
     
     log_info(f"Criando usuário: {username}")
