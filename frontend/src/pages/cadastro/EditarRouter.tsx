@@ -18,7 +18,7 @@ const fields: FormField[] = [
   { name: 'ip', label: 'IP', required: true },
   { name: 'ssh_port', label: 'Porta SSH', required: true, type: 'number' },
   { name: 'ssh_user', label: 'Usuário SSH', required: true },
-  { name: 'ssh_password', label: 'Senha SSH (preencha para alterar)', required: false, type: 'password' },
+  { name: 'ssh_password', label: 'Nova Senha SSH (deixe vazio para manter a atual)', required: false, type: 'password' },
   { name: 'asn', label: 'ASN', required: true, type: 'number' },
   { name: 'note', label: 'Observação', required: false, multiline: true, minRows: 2 },
   { name: 'is_active', label: 'Ativo', required: false, type: 'checkbox' },
