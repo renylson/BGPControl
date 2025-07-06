@@ -828,6 +828,11 @@ setup_nginx() {
     
     log_info "Criando configuração do site..."
     
+    # IMPORTANTE: O proxy_pass deve incluir /api/ no final para
+    # preservar o prefixo que o backend espera
+    # Corrigido bug onde proxy_pass era http://127.0.0.1:8000/
+    # que removia o prefixo /api/ causando erro 404 no login
+    
     if [[ $USE_DOMAIN == true ]]; then
         # Configuração para domínio
         cat > /etc/nginx/sites-available/bgpview << EOF
@@ -848,7 +853,7 @@ server {
     }
     
     location /api/ {
-        proxy_pass http://127.0.0.1:8000/;
+        proxy_pass http://127.0.0.1:8000/api/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -923,7 +928,7 @@ server {
     }
     
     location /api/ {
-        proxy_pass http://127.0.0.1:8000/;
+        proxy_pass http://127.0.0.1:8000/api/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
