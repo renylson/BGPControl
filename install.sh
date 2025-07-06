@@ -565,7 +565,7 @@ EOF
     if run_as_user $SERVICE_USER bash -c "
         source .venv/bin/activate
         cd $INSTALL_DIR/backend
-        python3 init_database.py '$ADMIN_USERNAME' '$ADMIN_PASSWORD' '$ADMIN_NAME' 'admin'
+        python3 init_database.py '$ADMIN_USERNAME' '$ADMIN_PASSWORD' '$ADMIN_NAME' 'Administrador'
     "; then
         log_success "Banco de dados inicializado com sucesso"
     else
