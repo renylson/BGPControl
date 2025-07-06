@@ -11,6 +11,7 @@ export interface FormField {
   minRows?: number;
   fullWidth?: boolean;
   options?: { value: string | number; label: string }[];
+  endAdornment?: ReactNode;
 }
 
 interface FormProps {
@@ -128,7 +129,10 @@ export default function ReusableForm({
                   disabled={loading}
                   sx={{ bgcolor: '#181c24', borderRadius: 1, input: { color: '#fff' }, label: { color: '#bbb' } }}
                   InputLabelProps={{ style: { color: '#bbb' } }}
-                  InputProps={{ style: { color: '#fff' } }}
+                  InputProps={{ 
+                    style: { color: '#fff' },
+                    endAdornment: field.endAdornment
+                  }}
                 />
               )}
             </Box>

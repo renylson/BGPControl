@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import ReusableForm from '../../components/ReusableForm';
 import type { FormField } from '../../components/ReusableForm';
-import { Typography, Box, Button, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import { Typography, Box, Button, Dialog, DialogTitle, DialogContent, IconButton, Tooltip } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import SearchIcon from '@mui/icons-material/Search';
 import { getRouters } from '../../api/routers';
+import { lookupASN } from '../../services/asnLookup';
 import api from '../../api/axios';
 
 export default function ModalEditarPeering({ id, open, onClose, onSuccess }: { id: number, open: boolean, onClose: () => void, onSuccess?: () => void }) {
@@ -15,6 +17,7 @@ export default function ModalEditarPeering({ id, open, onClose, onSuccess }: { i
   const [loadingData, setLoadingData] = useState(true);
   const [routers, setRouters] = useState<any[]>([]);
   const [ipOrigens, setIpOrigens] = useState<any[]>([]);
+  const [asnLoading, setAsnLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -42,6 +45,41 @@ export default function ModalEditarPeering({ id, open, onClose, onSuccess }: { i
     }
   }, [values.router_id, values.type, routers]);
 
+  // Função para consultar informações do ASN
+  const handleASNLookup = async () => {
+    if (!values.remote_asn) {
+      setErrors(prev => ({ ...prev, remote_asn: 'Digite um ASN para consultar' }));
+      return;
+    }
+
+    setAsnLoading(true);
+    setErrors(prev => ({ ...prev, remote_asn_name: '' }));
+
+    try {
+      const asnInfo = await lookupASN(values.remote_asn);
+      if (asnInfo) {
+        setValues(prev => ({
+          ...prev,
+          remote_asn_name: asnInfo.name
+        }));
+        setSuccess('Informações do ASN encontradas!');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setErrors(prev => ({ 
+          ...prev, 
+          remote_asn_name: 'ASN não encontrado nas bases de dados públicas' 
+        }));
+      }
+    } catch (error) {
+      setErrors(prev => ({ 
+        ...prev, 
+        remote_asn_name: 'Erro ao consultar ASN. Verifique sua conexão.' 
+      }));
+    } finally {
+      setAsnLoading(false);
+    }
+  };
+
   const fields: FormField[] = [
     { name: 'name', label: 'Nome', required: true, autoFocus: true },
     { name: 'ip', label: 'IP', required: true },
@@ -50,7 +88,23 @@ export default function ModalEditarPeering({ id, open, onClose, onSuccess }: { i
       { value: 'IPv6', label: 'IPv6' },
     ] },
     { name: 'remote_asn', label: 'ASN Remoto', required: true, type: 'number' },
-    { name: 'remote_asn_name', label: 'Nome ASN Remoto', required: true },
+    { 
+      name: 'remote_asn_name', 
+      label: 'Nome ASN Remoto', 
+      required: true,
+      endAdornment: (
+        <Tooltip title="Consultar nome do ASN automaticamente">
+          <IconButton 
+            onClick={handleASNLookup}
+            disabled={!values.remote_asn || asnLoading}
+            edge="end"
+            size="small"
+          >
+            <SearchIcon />
+          </IconButton>
+        </Tooltip>
+      )
+    },
     { name: 'router_id', label: 'Roteador', required: true, type: 'select', options: routers.map((r: any) => ({ value: r.id, label: r.name })) },
     { name: 'ip_origem_id', label: 'IP de Origem', required: false, type: 'select', options: ipOrigens.map((ip: any) => ({ value: ip.id, label: `${ip.name} (${ip.ip})` })) },
     { name: 'note', label: 'Observação', required: false, multiline: true, minRows: 2 },

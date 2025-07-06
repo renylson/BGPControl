@@ -47,9 +47,45 @@ export default function Login() {
           </Typography>
         </Box>
         <form onSubmit={handleLogin}>
-          <TextField label="Usuário" fullWidth margin="none" value={username} onChange={e => setUsername(e.target.value)} autoFocus sx={{ bgcolor: '#232a36', borderRadius: 1 }} InputLabelProps={{ style: { color: '#b0b8c1' } }} InputProps={{ style: { color: '#f5f5f5' } }} />
+          <TextField label="Usuário" fullWidth margin="none" value={username} onChange={e => setUsername(e.target.value)} autoFocus 
+            sx={{
+              bgcolor: '#232a36',
+              borderRadius: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#b0b8c1',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#1976d2',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#1976d2',
+                },
+              },
+            }}
+            InputLabelProps={{ style: { color: '#b0b8c1' } }} InputProps={{ style: { color: '#f5f5f5' } }}
+          />
           <Box sx={{ height: 10 }} />
-          <TextField label="Senha" type="password" fullWidth margin="none" value={password} onChange={e => setPassword(e.target.value)} sx={{ bgcolor: '#232a36', borderRadius: 1 }} InputLabelProps={{ style: { color: '#b0b8c1' } }} InputProps={{ style: { color: '#f5f5f5' } }} />
+          <TextField label="Senha" type="password" fullWidth margin="none" value={password} onChange={e => setPassword(e.target.value)} 
+            sx={{
+              bgcolor: '#232a36',
+              borderRadius: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#b0b8c1',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#1976d2',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#1976d2',
+                },
+              },
+            }}
+            InputLabelProps={{ style: { color: '#b0b8c1' } }} InputProps={{ style: { color: '#f5f5f5' } }}
+          />
           {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
           <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 3, fontWeight: 600, fontSize: 15, py: 1, borderRadius: 2, boxShadow: '0 2px 8px 0 rgba(31, 38, 135, 0.10)', minHeight: 36 }}>
             Entrar

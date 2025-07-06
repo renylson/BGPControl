@@ -1,7 +1,5 @@
-
-
 from fastapi import FastAPI
-from app.routers import user, router, peering, peering_group, ssh, ssh_bgp, ssh_bgp_group, peering_group_stream, peering_stream, dashboard, looking_glass, audit
+from app.routers import user, router, peering, peering_group, ssh, ssh_bgp, ssh_bgp_group, peering_group_stream, peering_stream, dashboard, looking_glass, audit, asn_lookup
 from app.middleware.audit import AuditMiddleware
 
 app = FastAPI()
@@ -30,6 +28,7 @@ app.include_router(peering_group.router, prefix="/api/peering-groups", tags=["pe
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(looking_glass.router, prefix="/api/looking-glass", tags=["looking-glass"])
 app.include_router(audit.router, prefix="/api/audit", tags=["audit"])
+app.include_router(asn_lookup.router, prefix="/api/asn-lookup", tags=["asn-lookup"])
 app.include_router(ssh.router, prefix="/api", tags=["ssh"])
 app.include_router(ssh_bgp.router, prefix="/api", tags=["ssh-bgp"])
 app.include_router(ssh_bgp_group.router, prefix="/api", tags=["ssh-bgp-group"])
