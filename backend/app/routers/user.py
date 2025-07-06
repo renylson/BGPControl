@@ -107,3 +107,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inativo")
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=UserRead)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Retorna informações do usuário logado"""
+    return current_user
+
+@router.get("/test")
+async def test_route():
+    """Rota de teste sem autenticação"""
+    return {"message": "ok"}

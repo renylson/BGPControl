@@ -39,7 +39,7 @@ def log_error(message):
 def log_warning(message):
     print(f"⚠️  {message}")
 
-async def create_admin_user(username, password, name, profile="admin"):
+async def create_admin_user(username, password, name, profile="Administrador"):
     """Cria um usuário administrador"""
     try:
         SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -87,13 +87,13 @@ async def main():
     """Função principal"""
     if len(sys.argv) < 4:
         print("Uso: python3 create_admin.py <username> <password> <name> [profile]")
-        print("Exemplo: python3 create_admin.py admin senha123 'Administrador' admin")
+        print("Exemplo: python3 create_admin.py admin senha123 'Administrador' Administrador")
         sys.exit(1)
     
     username = sys.argv[1]
     password = sys.argv[2]
     name = sys.argv[3]
-    profile = sys.argv[4] if len(sys.argv) > 4 else "admin"
+    profile = sys.argv[4] if len(sys.argv) > 4 else "Administrador"
     
     print("👤 BGPView - Criador de Usuário Administrador")
     print("=" * 50)

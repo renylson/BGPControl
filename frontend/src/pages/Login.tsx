@@ -23,7 +23,14 @@ export default function Login() {
       const res = await api.post('/users/login/', params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
-      login(res.data.access_token); // Usa o contexto para salvar o token
+      
+      // Determinar perfil baseado no username (temporário)
+      let userProfile = 'Administrador'; // padrão
+      if (username === 'operador') {
+        userProfile = 'Operador';
+      }
+      
+      login(res.data.access_token, userProfile);
       navigate('/');
     } catch (err: any) {
       setError('Usuário ou senha inválidos');

@@ -41,8 +41,22 @@ export default function MainLayoutWithFooter() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [openChangePassword, setOpenChangePassword] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Filtrar menu baseado no perfil do usuário
+  const getFilteredMenu = () => {
+    if (profile === 'Operador') {
+      // Operadores só veem Dashboard, Operação e Looking Glass
+      return menu.filter(item => 
+        !item.children && ['Dashboard', 'Operação', 'Looking Glass'].includes(item.text)
+      );
+    }
+    // Administradores veem tudo
+    return menu;
+  };
+
+  const filteredMenu = getFilteredMenu();
 
   const handleLogout = () => {
     logout();
@@ -140,7 +154,7 @@ export default function MainLayoutWithFooter() {
       >
         <Toolbar />
         <List sx={{ mt: 2 }}>
-          {menu.map(item =>
+          {filteredMenu.map(item =>
             item.children ? (
               <>
                 {item.children.map(child => (
@@ -222,7 +236,7 @@ export default function MainLayoutWithFooter() {
       >
         <Toolbar />
         <List sx={{ mt: 2 }}>
-          {menu.map(item =>
+          {filteredMenu.map(item =>
             item.children ? (
               <>
                 {/* Divider para separar grupos */}

@@ -9,7 +9,7 @@ import os
 
 from app.core.config import SECRET_KEY, ALGORITHM
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/login")
 
 async def get_db():
     async with SessionLocal() as session:
