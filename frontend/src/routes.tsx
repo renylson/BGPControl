@@ -18,6 +18,8 @@ const EditarUsuario = lazy(() => import('./pages/cadastro/EditarUsuario'));
 const Operacao = lazy(() => import('./pages/Operacao'));
 const LookingGlass = lazy(() => import('./pages/LookingGlass'));
 const LogsAuditoria = lazy(() => import('./pages/LogsAuditoria'));
+const BackupDatabase = lazy(() => import('./pages/BackupDatabase'));
+const AuditCleanup = lazy(() => import('./pages/AuditCleanup'));
 // const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 
 export const routes = [
@@ -38,6 +40,8 @@ export const routes = [
   { path: '/operacao', element: <Operacao /> },
   { path: '/looking-glass', element: <LookingGlass /> },
   { path: '/auditoria', element: <LogsAuditoria /> },
+  { path: '/backup', element: <BackupDatabase /> },
+  { path: '/audit-cleanup', element: <AuditCleanup /> },
   // { path: '/trocar-senha', element: <ChangePassword /> }, // Modal é aberto via header
   { path: '*', element: <Navigate to="/" /> },
 ];

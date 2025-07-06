@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import user, router, peering, peering_group, ssh, ssh_bgp, ssh_bgp_group, peering_group_stream, peering_stream, dashboard, looking_glass, audit, asn_lookup
+from app.routers import user, router, peering, peering_group, ssh, ssh_bgp, ssh_bgp_group, peering_group_stream, peering_stream, dashboard, looking_glass, audit, asn_lookup, database_backup, audit_cleanup
 from app.middleware.audit import AuditMiddleware
 
 app = FastAPI()
@@ -35,6 +35,8 @@ app.include_router(ssh_bgp_group.router, prefix="/api", tags=["ssh-bgp-group"])
 
 app.include_router(peering_group_stream.router, prefix="/api/peering-groups", tags=["peering-groups"])
 app.include_router(peering_stream.router, prefix="/api/peerings", tags=["peerings"])
+app.include_router(database_backup.router, prefix="/api/database-backup", tags=["database-backup"])
+app.include_router(audit_cleanup.router, prefix="/api/audit-cleanup", tags=["audit-cleanup"])
 
 @app.get("/")
 def read_root():

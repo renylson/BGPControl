@@ -4,3 +4,4 @@ from .peering import PeeringCreate, PeeringUpdate, PeeringRead
 from .peering_group import PeeringGroupCreate, PeeringGroupUpdate, PeeringGroupRead
 from .looking_glass import LookingGlassQuery, QueryResponse
 from .audit_log import AuditLogCreate, AuditLogResponse, AuditLogFilter, AuditLogStats
+from .database_backup import BackupInfo, BackupResponse, BackupListResponse, RestoreRequest, RestoreResponse, BackupStatus
