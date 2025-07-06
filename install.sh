@@ -1101,7 +1101,17 @@ create_maintenance_scripts() {
     
     mkdir -p /usr/local/bin/bgpcontrol
     
-    # Script de backup
+    # Criar diretório de backup com permissões corretas
+    mkdir -p /var/backups/bgpcontrol
+    chown $SERVICE_USER:$SERVICE_USER /var/backups/bgpcontrol
+    chmod 755 /var/backups/bgpcontrol
+    
+    # Criar diretórios de logs e reports
+    mkdir -p /var/log/bgpcontrol
+    chown $SERVICE_USER:$SERVICE_USER /var/log/bgpcontrol
+    chmod 755 /var/log/bgpcontrol
+    
+    # Script de backup atualizado (compatível com o novo sistema)
     cat > /usr/local/bin/bgpcontrol/backup.sh << EOF
 #!/bin/bash
 # Script de backup do BGPControl
@@ -1111,17 +1121,250 @@ DATE=\$(date +%Y%m%d_%H%M%S)
 
 mkdir -p \$BACKUP_DIR
 
-# Backup do banco de dados
-PGPASSWORD="$DB_PASSWORD" pg_dump -h localhost -U $DB_USER $DB_NAME > \$BACKUP_DIR/database_\$DATE.sql
+# Backup do banco de dados (compatível com o novo sistema de backup via API)
+PGPASSWORD="$DB_PASSWORD" pg_dump -h localhost -U $DB_USER $DB_NAME --clean --create --if-exists | gzip > \$BACKUP_DIR/database_\$DATE.sql.gz
 
 # Backup dos arquivos de configuração
 tar -czf \$BACKUP_DIR/config_\$DATE.tar.gz $INSTALL_DIR/backend/.env $INSTALL_DIR/frontend/.env
 
 # Manter apenas os últimos 7 backups
-find \$BACKUP_DIR -name "*.sql" -mtime +7 -delete
-find \$BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
+find \$BACKUP_DIR -name "database_*.sql.gz" -mtime +7 -delete
+find \$BACKUP_DIR -name "config_*.tar.gz" -mtime +7 -delete
 
 echo "Backup concluído: \$DATE"
+EOF
+
+    # Script automatizado de backup via cron
+    cat > $INSTALL_DIR/backend/backup_cron.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Script automatizado para backup do banco de dados BGPControl
+Usado pelo cron job para backups automáticos
+"""
+import asyncio
+import logging
+import sys
+import os
+from datetime import datetime
+from pathlib import Path
+
+# Adicionar o diretório do app ao path
+sys.path.append(os.path.dirname(__file__))
+
+from app.services.database_backup import DatabaseBackupService
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/var/log/bgpcontrol_backup.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+async def main():
+    """Executa backup automático"""
+    try:
+        logger.info("Iniciando backup automático...")
+        
+        service = DatabaseBackupService()
+        backup_info = await service.create_backup(
+            created_by="sistema_automatico",
+            description="Backup automático diário"
+        )
+        
+        logger.info(f"Backup criado com sucesso: {backup_info.filename}")
+        logger.info(f"Tamanho: {backup_info.size_human}")
+        
+        # Gerar relatório
+        report_path = Path("/var/log/bgpcontrol") / f"backup_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        with open(report_path, 'w') as f:
+            f.write(f"Relatório de Backup - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 50 + "\n")
+            f.write(f"Arquivo: {backup_info.filename}\n")
+            f.write(f"Tamanho: {backup_info.size_human}\n")
+            f.write(f"Criado por: {backup_info.created_by}\n")
+            f.write(f"Data: {backup_info.created_at}\n")
+            if backup_info.description:
+                f.write(f"Descrição: {backup_info.description}\n")
+        
+        logger.info(f"Relatório salvo em: {report_path}")
+        
+    except Exception as e:
+        logger.error(f"Erro no backup automático: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+EOF
+
+    # Script automatizado de limpeza de audit logs
+    cat > $INSTALL_DIR/backend/audit_cleanup_cron.py << 'EOF'
+#!/usr/bin/env python3
+"""
+Script automatizado para limpeza de logs de auditoria BGPControl
+Usado pelo cron job para limpeza automática
+"""
+import asyncio
+import logging
+import sys
+import os
+from datetime import datetime
+from pathlib import Path
+
+# Adicionar o diretório do app ao path
+sys.path.append(os.path.dirname(__file__))
+
+from app.services.audit_cleanup import AuditLogCleanupService
+
+# Configurar logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/var/log/bgpcontrol_audit_cleanup.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+async def main():
+    """Executa limpeza automática de logs de auditoria"""
+    try:
+        logger.info("Iniciando limpeza automática de logs de auditoria...")
+        
+        service = AuditLogCleanupService()
+        
+        # Obter estatísticas antes da limpeza
+        stats_before = await service.get_audit_stats()
+        logger.info(f"Logs antes da limpeza: {stats_before['total_logs']}")
+        
+        # Executar limpeza (manter últimos 6 meses)
+        result = await service.cleanup_old_logs(months_to_keep=6)
+        
+        logger.info(f"Limpeza concluída: {result['deleted_count']} logs removidos")
+        logger.info(f"Espaço liberado: {result['freed_space_mb']:.2f} MB")
+        
+        # Gerar relatório
+        report_path = Path("/var/log/bgpcontrol") / f"audit_cleanup_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        with open(report_path, 'w') as f:
+            f.write(f"Relatório de Limpeza de Auditoria - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 60 + "\n")
+            f.write(f"Logs removidos: {result['deleted_count']}\n")
+            f.write(f"Espaço liberado: {result['freed_space_mb']:.2f} MB\n")
+            f.write(f"Logs antes da limpeza: {stats_before['total_logs']}\n")
+            f.write(f"Log mais antigo removido até: {result.get('oldest_removed_date', 'N/A')}\n")
+            f.write(f"Log mais antigo restante: {result.get('oldest_remaining_date', 'N/A')}\n")
+            f.write(f"Data da limpeza: {result['cleanup_date']}\n")
+        
+        logger.info(f"Relatório salvo em: {report_path}")
+        
+    except Exception as e:
+        logger.error(f"Erro na limpeza automática: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+EOF
+
+    # Script de configuração da automação
+    cat > /usr/local/bin/bgpcontrol/setup-automation.sh << EOF
+#!/bin/bash
+# Script para configurar automação de backup e limpeza
+
+echo "Configurando automação do BGPControl..."
+
+# Tornar scripts executáveis
+chmod +x $INSTALL_DIR/backend/backup_cron.py
+chmod +x $INSTALL_DIR/backend/audit_cleanup_cron.py
+chown $SERVICE_USER:$SERVICE_USER $INSTALL_DIR/backend/backup_cron.py
+chown $SERVICE_USER:$SERVICE_USER $INSTALL_DIR/backend/audit_cleanup_cron.py
+
+# Configurar cron jobs
+echo "Configurando cron jobs..."
+
+# Backup diário às 2:00
+echo "0 2 * * * cd $INSTALL_DIR/backend && ./.venv/bin/python backup_cron.py >> /var/log/bgpcontrol_backup.log 2>&1" | crontab -u $SERVICE_USER -
+
+# Limpeza de auditoria semanal (domingo às 3:00)
+echo "0 3 * * 0 cd $INSTALL_DIR/backend && ./.venv/bin/python audit_cleanup_cron.py >> /var/log/bgpcontrol_audit_cleanup.log 2>&1" | crontab -u $SERVICE_USER -
+
+# Configurar logrotate
+cat > /etc/logrotate.d/bgpcontrol << 'LOGROTATE_EOF'
+/var/log/bgpcontrol_backup.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 bgpcontrol bgpcontrol
+}
+
+/var/log/bgpcontrol_audit_cleanup.log {
+    weekly
+    rotate 12
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 bgpcontrol bgpcontrol
+}
+
+/var/log/bgpcontrol/*.txt {
+    monthly
+    rotate 6
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 bgpcontrol bgpcontrol
+}
+LOGROTATE_EOF
+
+echo "Automação configurada com sucesso!"
+echo "Backup diário: 02:00"
+echo "Limpeza semanal: Domingo 03:00"
+echo "Logs em: /var/log/bgpcontrol/"
+EOF
+
+    # Scripts de gerenciamento manual
+    cat > /usr/local/bin/bgpcontrol-backup-now << EOF
+#!/bin/bash
+# Executar backup manualmente
+echo "Executando backup manual..."
+cd $INSTALL_DIR/backend
+sudo -u $SERVICE_USER ./.venv/bin/python backup_cron.py
+EOF
+
+    cat > /usr/local/bin/bgpcontrol-cleanup-audit << EOF
+#!/bin/bash
+# Executar limpeza de auditoria manualmente
+echo "Executando limpeza de logs de auditoria..."
+cd $INSTALL_DIR/backend
+sudo -u $SERVICE_USER ./.venv/bin/python audit_cleanup_cron.py
+EOF
+
+    cat > /usr/local/bin/bgpcontrol-automation-status << EOF
+#!/bin/bash
+# Verificar status da automação
+echo "=== Status da Automação BGPControl ==="
+echo ""
+echo "Cron jobs do usuário $SERVICE_USER:"
+crontab -u $SERVICE_USER -l 2>/dev/null || echo "Nenhum cron job configurado"
+echo ""
+echo "Últimos backups:"
+ls -lt /var/backups/bgpcontrol/*.gz 2>/dev/null | head -5 || echo "Nenhum backup encontrado"
+echo ""
+echo "Logs de backup:"
+tail -5 /var/log/bgpcontrol_backup.log 2>/dev/null || echo "Log de backup não encontrado"
+echo ""
+echo "Logs de limpeza:"
+tail -5 /var/log/bgpcontrol_audit_cleanup.log 2>/dev/null || echo "Log de limpeza não encontrado"
 EOF
 
     # Script de atualização
@@ -1823,8 +2066,9 @@ else
 fi
 EOF
     
-    # Tornar scripts executáveis
+    # Tornar todos os scripts executáveis
     chmod +x /usr/local/bin/bgpcontrol/*.sh
+    chmod +x /usr/local/bin/bgpcontrol-*
     
     # Criar links simbólicos para fácil acesso
     ln -sf /usr/local/bin/bgpcontrol/status.sh /usr/local/bin/bgpcontrol-status
@@ -1833,8 +2077,10 @@ EOF
     ln -sf /usr/local/bin/bgpcontrol/check-db.sh /usr/local/bin/bgpcontrol-check-db
     ln -sf /usr/local/bin/bgpcontrol/repair-db.sh /usr/local/bin/bgpcontrol-repair-db
     ln -sf /usr/local/bin/bgpcontrol/test-install.sh /usr/local/bin/bgpcontrol-test
+    ln -sf /usr/local/bin/bgpcontrol/setup-automation.sh /usr/local/bin/bgpcontrol-setup-automation
     
     log_success "Scripts de manutenção criados"
+    log_info "Executar automação: bgpcontrol-setup-automation"
 }
 
 # Mostrar informações finais
@@ -1878,12 +2124,19 @@ show_completion_info() {
     echo ""
     echo -e "${BOLD}🔧 COMANDOS ÚTEIS:${NC}"
     echo "================================="
-    echo -e "• ${CYAN}bgpcontrol-status${NC}       - Ver status dos serviços"
-    echo -e "• ${CYAN}bgpcontrol-test${NC}         - Testar instalação"
-    echo -e "• ${CYAN}bgpcontrol-backup${NC}       - Fazer backup do sistema"
-    echo -e "• ${CYAN}bgpcontrol-update${NC}       - Atualizar o sistema"
-    echo -e "• ${CYAN}bgpcontrol-check-db${NC}     - Verificar banco de dados"
-    echo -e "• ${CYAN}bgpcontrol-repair-db${NC}    - Reparar banco de dados"
+    echo -e "• ${CYAN}bgpcontrol-status${NC}              - Ver status dos serviços"
+    echo -e "• ${CYAN}bgpcontrol-test${NC}                - Testar instalação"
+    echo -e "• ${CYAN}bgpcontrol-backup${NC}              - Fazer backup do sistema"
+    echo -e "• ${CYAN}bgpcontrol-update${NC}              - Atualizar o sistema"
+    echo -e "• ${CYAN}bgpcontrol-check-db${NC}            - Verificar banco de dados"
+    echo -e "• ${CYAN}bgpcontrol-repair-db${NC}           - Reparar banco de dados"
+    echo ""
+    echo -e "${BOLD}🤖 AUTOMAÇÃO:${NC}"
+    echo "================================="
+    echo -e "• ${CYAN}bgpcontrol-backup-now${NC}          - Executar backup manual"
+    echo -e "• ${CYAN}bgpcontrol-cleanup-audit${NC}       - Limpeza manual de logs"
+    echo -e "• ${CYAN}bgpcontrol-automation-status${NC}   - Status da automação"
+    echo -e "• ${CYAN}bgpcontrol-setup-automation${NC}    - Reconfigurar automação"
     echo ""
     echo -e "• ${CYAN}systemctl status bgpcontrol-backend${NC} - Status do backend"
     echo -e "• ${CYAN}journalctl -u bgpcontrol-backend -f${NC} - Logs do backend"
@@ -1896,11 +2149,21 @@ show_completion_info() {
     echo -e "• ${BOLD}Logs Backend:${NC} journalctl -u bgpcontrol-backend"
     echo -e "• ${BOLD}Logs Nginx:${NC} /var/log/nginx/"
     echo -e "• ${BOLD}Backups:${NC} /var/backups/bgpcontrol/"
+    echo -e "• ${BOLD}Logs Automação:${NC} /var/log/bgpcontrol/"
+    
+    echo ""
+    echo -e "${BOLD}📅 AUTOMAÇÃO CONFIGURADA:${NC}"
+    echo "================================="
+    echo -e "• ${GREEN}Backup automático:${NC} Diário às 02:00"
+    echo -e "• ${GREEN}Limpeza de logs:${NC} Semanal aos domingos às 03:00"
+    echo -e "• ${GREEN}Retenção de backups:${NC} 30 dias"
+    echo -e "• ${GREEN}Retenção de logs de auditoria:${NC} 6 meses"
     
     echo ""
     echo -e "${YELLOW}${BOLD}⚠️  IMPORTANTE:${NC}"
     echo "• Anote as credenciais do administrador em local seguro"
-    echo "• Configure backups regulares com: bgpcontrol-backup"
+    echo "• Backups automáticos já estão configurados"
+    echo "• Limpeza de logs de auditoria configurada automaticamente"
     echo "• Para atualizações, use: bgpcontrol-update"
     
     if [[ $USE_DOMAIN == true && $USE_SSL == false ]]; then
@@ -1941,6 +2204,11 @@ main() {
     create_admin_user
     setup_firewall
     create_maintenance_scripts
+    
+    # Configurar automação de backup e limpeza
+    log_header "CONFIGURANDO AUTOMAÇÃO"
+    log_info "Configurando backups automáticos e limpeza de logs..."
+    /usr/local/bin/bgpcontrol/setup-automation.sh
     
     # Executar teste da instalação
     log_header "VERIFICAÇÃO FINAL"
