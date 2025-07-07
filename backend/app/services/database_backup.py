@@ -286,8 +286,11 @@ class DatabaseBackupService:
         if not confirm_replace:
             raise ValueError("Confirmação necessária para substituir dados existentes")
         
+        # Determinar o sufixo baseado no nome do arquivo
+        suffix = '.sql.gz' if file.filename.endswith('.sql.gz') else '.sql'
+        
         # Salvar arquivo temporariamente
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.sql') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name

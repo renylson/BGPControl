@@ -148,6 +148,15 @@ const BackupDatabase: React.FC = () => {
   const handleUploadRestore = async () => {
     if (!uploadFile || !confirmReplace) return;
 
+    // Validação adicional de tipo de arquivo
+    const allowedExtensions = ['.sql', '.sql.gz'];
+    const isValidFile = allowedExtensions.some(ext => uploadFile.name.toLowerCase().endsWith(ext));
+    
+    if (!isValidFile) {
+      setError('Apenas arquivos .sql ou .sql.gz são permitidos');
+      return;
+    }
+
     try {
       const response = await backupApi.uploadAndRestore(uploadFile, confirmReplace);
       
@@ -422,12 +431,29 @@ const BackupDatabase: React.FC = () => {
         <DialogTitle>Upload e Restauração</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Selecione um arquivo de backup SQL para restaurar o banco de dados.
+            Selecione um arquivo de backup SQL (.sql ou .sql.gz) para restaurar o banco de dados.
           </DialogContentText>
           <input
             type="file"
-            accept=".sql"
-            onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+            accept=".sql,.sql.gz,application/sql,application/gzip"
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              if (file) {
+                const allowedExtensions = ['.sql', '.sql.gz'];
+                const isValidFile = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+                
+                if (!isValidFile) {
+                  setError('Apenas arquivos .sql ou .sql.gz são permitidos');
+                  setUploadFile(null);
+                  e.target.value = ''; // Limpar o input
+                } else {
+                  setError(null);
+                  setUploadFile(file);
+                }
+              } else {
+                setUploadFile(null);
+              }
+            }}
             style={{ margin: '16px 0' }}
           />
           <FormControlLabel

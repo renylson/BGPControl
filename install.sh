@@ -492,6 +492,13 @@ create_system_user() {
     else
         log_info "Usuário $SERVICE_USER já existe"
     fi
+    
+    # Criar diretório de backup
+    log_info "Criando diretório de backup..."
+    mkdir -p /var/backups/bgpcontrol
+    chown $SERVICE_USER:$SERVICE_USER /var/backups/bgpcontrol
+    chmod 755 /var/backups/bgpcontrol
+    log_success "Diretório de backup criado"
 }
 
 # Clonar projeto

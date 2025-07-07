@@ -1,7 +1,7 @@
 """
 Router para gerenciamento de backup e restore do banco de dados
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user, is_admin
@@ -13,7 +13,10 @@ from app.schemas.database_backup import (
 from app.services.database_backup import DatabaseBackupService
 from typing import List
 import os
+import logging
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 backup_service = DatabaseBackupService()
@@ -127,18 +130,21 @@ async def restore_backup(
 @router.post("/upload-restore", response_model=RestoreResponse)
 async def upload_and_restore(
     file: UploadFile = File(...),
-    confirm_replace: bool = False,
+    confirm_replace: bool = Form(False),
     current_user: User = Depends(is_admin)
 ):
     """
     Upload e restauração de um arquivo de backup SQL
     """
     try:
+        # Debug logging
+        logger.info(f"Upload restore: confirm_replace={confirm_replace}, type={type(confirm_replace)}")
+        
         # Validar arquivo
-        if not file.filename.endswith('.sql'):
+        if not (file.filename.endswith('.sql') or file.filename.endswith('.sql.gz')):
             raise HTTPException(
                 status_code=400,
-                detail="Apenas arquivos .sql são permitidos"
+                detail="Apenas arquivos .sql ou .sql.gz são permitidos"
             )
         
         # Salvar arquivo temporariamente e restaurar
