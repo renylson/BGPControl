@@ -1,33 +1,187 @@
-# BGPView - Instalador Automatizado
+# BGPControl - Instalador Automatizado
 
-Este script instala automaticamente o BGPView em um sistema Debian limpo.
+**Desenvolvido por:** Renylson Marques  
+**E-mail:** renylsonm@gmail.com
+
+Sistema de instalação automatizada para o BGPControl em servidores Debian/Ubuntu. Este instalador demonstra competências em automação de infraestrutura, scripting shell e configuração de serviços Linux.
+
+## 🎯 Objetivos do Instalador
+
+Este script automatizado foi desenvolvido para:
+
+- **Automatizar Deploy**: Instalação completa em servidor limpo
+- **Configuração de Produção**: Setup otimizado para ambiente produtivo
+- **Boas Práticas DevOps**: Uso de systemd, nginx, usuários dedicados
+- **Segurança**: Configurações seguras por padrão
+- **Monitoramento**: Logs estruturados e health checks
 
 ## 🚀 Uso Rápido
 
 ```bash
-# Fazer download do instalador
-wget https://raw.githubusercontent.com/renylson/bgpview/main/install.sh
+# Download do instalador
+wget https://raw.githubusercontent.com/renylson/bgpcontrol/main/install.sh
 
 # Dar permissão de execução
 chmod +x install.sh
 
-# Executar como root
+# Executar como root (recomendado)
 sudo ./install.sh
 ```
 
-## 📋 O que o Instalador Faz
+## 📋 Processo de Instalação Automatizada
 
-### Etapas Automáticas:
-1. **Verificação do Sistema** - Confirma compatibilidade com Debian/Ubuntu
-2. **Coleta de Configurações** - Interface interativa para personalização
-3. **Atualização do Sistema** - Atualiza repositórios e pacotes
-4. **Instalação do PostgreSQL** - Instala e configura banco de dados
-5. **Instalação do Python 3.11** - Com ambiente virtual e dependências
-6. **Instalação do Node.js 18.x** - Para o frontend React
-7. **Criação de Usuário** - Usuário de sistema dedicado (`bgpview`)
-8. **Download do Projeto** - Clone do repositório GitHub
-9. **Configuração do Backend** - Ambiente virtual, dependências, migrações
-10. **Configuração do Frontend** - Build de produção otimizado
+### Competências Demonstradas em DevOps
+
+O processo de instalação implementa as seguintes práticas:
+
+### 1. **Verificação e Validação de Sistema**
+- Detecção automática do OS (Debian/Ubuntu)
+- Verificação de permissões (usuário root/sudo)
+- Validação de recursos mínimos (RAM, espaço em disco)
+- Verificação de dependências do sistema
+
+### 2. **Configuração Interativa Inteligente**
+- Interface amigável para coleta de configurações
+- Validação de inputs (IPs, portas, senhas)
+- Geração automática de senhas seguras
+- Configuração de domínio e SSL
+
+### 3. **Automação de Infraestrutura**
+- Atualização completa do sistema operacional
+- Instalação e configuração do PostgreSQL 13+
+- Setup do Python 3.11 com ambiente virtual
+- Instalação do Node.js 18.x LTS
+
+### 4. **Segurança por Design**
+- Criação de usuário dedicado (`bgpcontrol`)
+- Configuração de firewall (UFW)
+- Permissões de arquivo restritivas
+- Hash seguro de senhas de banco
+
+### 5. **Serviços de Produção**
+- Configuração do systemd para backend
+- Setup do Nginx como reverse proxy
+- SSL/TLS com Let's Encrypt (opcional)
+- Logs estruturados e rotação automática
+
+### 6. **Automação de Deploy**
+- Clone automático do repositório
+- Build de produção do frontend
+- Migrações de banco automatizadas
+- Criação de usuário administrador
+
+### 7. **Monitoramento e Health Checks**
+- Verificação de serviços após instalação
+- Testes de conectividade automáticos
+- Status de portas e processos
+- Relatório final de instalação
+
+## 🛠️ Fluxo Técnico Detalhado
+
+### Fase 1: Preparação do Ambiente
+```bash
+# Verificações iniciais
+- OS compatibility check
+- Root/sudo verification
+- Network connectivity test
+- System resources validation
+```
+
+### Fase 2: Configuração do Sistema Base
+```bash
+# System update e dependencies
+apt update && apt upgrade -y
+apt install -y curl wget gnupg2 software-properties-common
+
+# PostgreSQL installation
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list
+apt update && apt install -y postgresql-13 postgresql-contrib-13
+```
+
+### Fase 3: Configuração do Python Environment
+```bash
+# Python 3.11 installation
+add-apt-repository ppa:deadsnakes/ppa -y
+apt install -y python3.11 python3.11-venv python3.11-dev
+python3.11 -m venv /opt/bgpcontrol/backend/.venv
+```
+
+### Fase 4: Setup do Node.js
+```bash
+# Node.js 18.x LTS
+curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+apt install -y nodejs
+```
+
+### Fase 5: Configuração da Aplicação
+```bash
+# User creation
+useradd -r -s /bin/false -d /opt/bgpcontrol bgpcontrol
+
+# Application setup
+git clone https://github.com/renylson/bgpcontrol.git /opt/bgpcontrol
+chown -R bgpcontrol:bgpcontrol /opt/bgpcontrol
+
+# Backend setup
+cd /opt/bgpcontrol/backend
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Database migration
+alembic upgrade head
+
+# Frontend build
+cd /opt/bgpcontrol/frontend
+npm install --production
+npm run build
+```
+
+### Fase 6: Configuração dos Serviços
+
+#### Systemd Service (Backend)
+```ini
+[Unit]
+Description=BGPControl Backend API
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=exec
+User=bgpcontrol
+Group=bgpcontrol
+WorkingDirectory=/opt/bgpcontrol/backend
+Environment=PATH=/opt/bgpcontrol/backend/.venv/bin
+ExecStart=/opt/bgpcontrol/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### Nginx Configuration
+```nginx
+server {
+    listen 80;
+    server_name _;
+    
+    # Frontend static files
+    location / {
+        root /opt/bgpcontrol/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Backend API proxy
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
 11. **Serviço Systemd** - Daemon para o backend
 12. **Configuração do Nginx** - Proxy reverso e servidor web
 13. **SSL/HTTPS** - Let's Encrypt (opcional)

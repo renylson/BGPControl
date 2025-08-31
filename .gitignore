@@ -1,34 +1,174 @@
-# Python
+# BGPControl - Git Ignore Rules
+# Desenvolvido por: Renylson Marques
+# E-mail: renylsonm@gmail.com
+
+# =============================================================================
+# CONFIGURAÇÕES SENSÍVEIS - NUNCA COMMITTAR
+# =============================================================================
+
+# Arquivo de configuração com senhas reais
+config.env
+
+# Chaves SSH e certificados
+*.pem
+*.key
+*.crt
+*.p12
+ssh_keys/
+certificates/
+
+# Tokens e secrets
+.env
+.env.local
+.env.production
+.env.staging
+
+# =============================================================================
+# PYTHON / BACKEND
+# =============================================================================
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
 *.pyc
 *.pyo
 *.pyd
-*.env
+*.so
+
+# Virtual environments
 .venv/
+backend/.venv/
+venv/
+ENV/
+env/
+
+# Backend specific
 backend/.env
 backend/instance/
 
-# Node
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# =============================================================================
+# NODE.JS / FRONTEND
+# =============================================================================
+
+# Dependencies
 node_modules/
 frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/build/
 frontend/coverage/
 
-# System
-.DS_Store
-Thumbs.db
+# Environment files
+frontend/.env*
 
 # Logs
-*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# IDEs
-.vscode/
-.idea/
+# =============================================================================
+# DATABASE
+# =============================================================================
 
-# Others
-.env
+# Database files
 *.sqlite3
 *.db
+*.sql
+*.dump
+*.backup
 
-# Build
-frontend/dist/
+# Backup files
+backup/
+backups/
+bgpcontrol_backup_*.sql*
+
+# =============================================================================
+# SISTEMA OPERACIONAL
+# =============================================================================
+
+# Windows
+Thumbs.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# =============================================================================
+# IDEs E EDITORES
+# =============================================================================
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.swp
+*.swo
+
+# =============================================================================
+# LOGS E TEMPORÁRIOS
+# =============================================================================
+
+# Application logs
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# =============================================================================
+# ESPECÍFICO DO PROJETO BGPCONTROL
+# =============================================================================
+
+# Instalação e deploy
+install.log
+deployment.log
+
+# SSL/TLS
+ssl/
+letsencrypt/
+
+# Dados de teste
+test_data/
+fixtures/
+
+# Scripts personalizados
+custom_scripts/
+user_scripts/
+
+# Cache
+.cache/
+*.cache
 
