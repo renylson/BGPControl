@@ -45,7 +45,6 @@ Durante o desenvolvimento deste projeto, aprofundei conhecimentos em:
 - [Uso do Sistema](#-uso-do-sistema)
 - [Comandos Úteis](#-comandos-úteis)
 - [Troubleshooting](#-troubleshooting)
-- [Contribuição](#-contribuição)
 - [Licença](#-licença)
 
 ---
