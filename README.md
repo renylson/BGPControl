@@ -757,9 +757,8 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 Para dúvidas ou problemas:
 
 1. Abra uma [Issue](https://github.com/renylson/bgpview/issues)
-2. Consulte a [documentação da API](http://localhost:8000/docs)
-3. Verifique os logs do sistema
+2. E-mail: renylsonm@gmail.com
 
 ---
 
-**Desenvolvido com ❤️ para facilitar o gerenciamento BGP**
+**Desenvolvido com ❤️ por Renylson Marques**
